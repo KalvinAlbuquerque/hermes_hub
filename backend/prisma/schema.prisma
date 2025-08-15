@@ -36,11 +36,14 @@ model User {
   profileId String
   profile   Profile @relation(fields: [profileId], references: [id])
 
-  templates         Template[]
-  sentNotifications NotificationLog[] @relation("SentByUser")
+  templates              Template[]
+  // Relações renomeadas e adicionadas
+  submittedNotifications NotificationLog[] @relation("SubmittedByUser")
+  approvedNotifications  NotificationLog[] @relation("ApprovedByUser")
 
   @@map("users")
 }
+
 
 model Template {
   id        String   @id @default(uuid())
@@ -59,16 +62,27 @@ model Template {
 }
 
 model NotificationLog {
-  id             String   @id @default(uuid())
-  recipientEmail String
-  status         String
-  sentAt         DateTime @default(now())
+  id             String    @id @default(uuid())
+  // O recipientEmail será movido para um campo JSON para suportar múltiplos destinatários
+  recipients     Json      // Armazena a lista de e-mails
+  status         String    // PENDING, APPROVED, REJECTED, SENT, FAILED
+  sentAt         DateTime? // Opcional, preenchido apenas no envio
+  createdAt      DateTime  @default(now())
+
+  subject        String    // Assunto final da notificação
+  body           String    // Corpo final com variáveis preenchidas
 
   templateId String
   template   Template @relation(fields: [templateId], references: [id])
 
-  sentByUserId String
-  sentByUser   User   @relation("SentByUser", fields: [sentByUserId], references: [id])
+  // Analista que submeteu
+  submittedByUserId String
+  submittedByUser   User   @relation("SubmittedByUser", fields: [submittedByUserId], references: [id])
+
+  // Aprovador (opcional)
+  approvedByUserId String?
+  approvedByUser   User?   @relation("ApprovedByUser", fields: [approvedByUserId], references: [id])
+  approvedAt       DateTime?
 
   @@map("notification_logs")
 }
