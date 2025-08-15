@@ -1,3 +1,4 @@
+// Arquivo: frontend/src/app/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,8 +6,13 @@ import withAuth from "@/components/withAuth";
 import api from '@/lib/api';
 import Modal from '@/components/Modal';
 import DashboardLayout from "@/components/DashboardLayout";
-import toast from 'react-hot-toast'; // Importa a biblioteca de toast
+import toast from 'react-hot-toast';
+import dynamic from 'next/dynamic'; // Importa a função 'dynamic'
 
+// Cria o editor dinamicamente, desativando a renderização no servidor (SSR)
+const TiptapEditor = dynamic(() => import('@/components/Editor'), {
+  ssr: false,
+});
 // Define o "formato" de um template para o TypeScript
 interface Template {
   id: string;
@@ -26,6 +32,7 @@ function DashboardPage() {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+
 
   // --- FUNÇÕES DE LÓGICA ---
   const fetchTemplates = async (page = 1) => {
@@ -127,7 +134,7 @@ function DashboardPage() {
 
   return (
     <DashboardLayout>
-      {/* O card principal agora tem cores para o dark mode */}
+      {/* O card principal que agrupa todo o conteúdo da página */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Templates de Notificação</h2>
@@ -168,7 +175,6 @@ function DashboardPage() {
           </table>
         </div>
 
-        {/* Controles de paginação com estilo para dark mode */}
         {totalPages > 1 && (
           <div className="mt-4 flex justify-between items-center">
             <button
@@ -191,9 +197,36 @@ function DashboardPage() {
           </div>
         )}
       </div>
+
+      <Modal title={editingTemplateId ? "Editar Template" : "Criar Novo Template"} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <form onSubmit={handleFormSubmit}>
+          <div className="mb-4">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Template</label>
+            <input type="text" name="name" id="name" value={formData.name} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" required />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assunto do E-mail</label>
+            <input type="text" name="subject" id="subject" value={formData.subject} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" required />
+          </div>
+
+          {/* A <textarea> foi substituída por este bloco */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Corpo do E-mail</label>
+            <div className="mt-1">
+              <TiptapEditor
+                content={formData.body}
+                onChange={(newContent) => setFormData(prev => ({ ...prev, body: newContent }))}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-4 mt-6">
+            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Salvar</button>
+          </div>
+        </form>
+      </Modal>
     </DashboardLayout>
   );
-
 }
-
 export default withAuth(DashboardPage);

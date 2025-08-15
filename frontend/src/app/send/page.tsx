@@ -23,8 +23,9 @@ function SendNotificationPage() {
     // Busca os templates ao carregar a página
     useEffect(() => {
         const fetchTemplates = async () => {
-            const response = await api.get('/templates');
-            setTemplates(response.data);
+            // Pede todos os templates em uma única página para o dropdown
+            const response = await api.get('/templates?page=1&pageSize=100');
+            setTemplates(response.data.data); // Correto: acessa a propriedade 'data'
         };
         fetchTemplates();
     }, []);

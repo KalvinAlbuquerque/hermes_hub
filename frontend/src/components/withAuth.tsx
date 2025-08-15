@@ -1,4 +1,3 @@
-// Arquivo: frontend/src/components/withAuth.tsx
 "use client";
 
 import { useEffect } from 'react';
@@ -7,20 +6,22 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const withAuth = (WrappedComponent: React.ComponentType) => {
   const Wrapper = (props: any) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, loading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-      // Se não estiver autenticado, redireciona para a página de login
-      if (!isAuthenticated) {
+      if (!loading && !isAuthenticated) {
         router.push('/login');
       }
-    }, [isAuthenticated, router]);
+    }, [isAuthenticated, loading, router]);
 
-    // Se estiver autenticado, mostra a página solicitada
+    if (loading) {
+      return <div className="flex h-screen items-center justify-center">Carregando...</div>;
+    }
+
     return isAuthenticated ? <WrappedComponent {...props} /> : null;
   };
-
+  
   return Wrapper;
 };
 
