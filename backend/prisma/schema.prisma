@@ -1,0 +1,56 @@
+// Arquivo: backend/prisma/schema.prisma
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model NotificationLog {
+  id             String   @id @default(uuid())
+  recipientEmail String   // Para quem o e-mail foi enviado
+  status         String   // Ex: "ENVIADO", "FALHOU"
+  sentAt         DateTime @default(now())
+
+  // Relação: Qual template foi usado?
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id])
+
+  // Relação: Qual analista enviou?
+  sentByUserId String
+  sentByUser   User   @relation(fields: [sentByUserId], references: [id])
+
+  @@map("notification_logs")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  createdAt DateTime @default(now())
+
+  notificationLogs NotificationLog[] // Um usuário pode ter enviado vários logs
+  templates Template[] // Adiciona a relação: um usuário pode ter vários templates
+  @@map("users")
+}
+
+model Template {
+  id        String   @id @default(uuid())
+  name      String   // Nome do template, ex: "Notificação de Ransomware"
+  subject   String   // Assunto do e-mail
+  body      String   // Corpo do e-mail, com os campos como [NOME_CLIENTE]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt // Atualiza automaticamente ao editar
+  notificationLogs NotificationLog[] // Um template pode ter sido usado em vários logs
+  // Relação: este template pertence a um autor (User)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  @@map("templates")
+}
+

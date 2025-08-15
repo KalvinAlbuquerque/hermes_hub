@@ -1,0 +1,38 @@
+# Opcional: Remova a linha 'version' para evitar o aviso
+# version: '3.8'
+
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: hermes_db
+    restart: always
+    environment:
+      - POSTGRES_USER=hermes_user
+      - POSTGRES_PASSWORD=hermes_strong_password
+      - POSTGRES_DB=hermes_hub_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - hermes_db_data:/var/lib/postgresql/data
+
+  backend:
+    container_name: hermes_backend
+    build: 
+      context: ./backend
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./backend:/usr/app
+      - /usr/app/node_modules
+    environment:
+      - DATABASE_URL=postgresql://hermes_user:hermes_strong_password@database:5432/hermes_hub_db
+      # Lembre-se de usar sua própria chave secreta aqui
+      - JWT_SECRET=-CHAVE-SECRETA-PARA-ASSINAR-OS-TOKENS-DO-HERMES-HUB-123456- 
+    # A LINHA ABAIXO PRECISA ESTAR INDENTADA NO MESMO NÍVEL DE 'environment', 'build', etc.
+      - EMAIL_USER=svca.systemmail@gmail.com
+      - EMAIL_PASS=ybitteppipuwvymo
+    depends_on:
+      - database
+
+volumes:
+  hermes_db_data:

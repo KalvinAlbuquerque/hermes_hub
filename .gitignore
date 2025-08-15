@@ -1,0 +1,87 @@
+# ==========================================
+# SISTEMAS OPERACIONAIS
+# ==========================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# ==========================================
+# LOGS E TEMPORAIS
+# ==========================================
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.swn
+
+# ==========================================
+# DEPENDÊNCIAS - NODE
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+hermeshub-firebase-service-account.json
+
+# ==========================================
+# PYTHON - VENV E COMPILED FILES
+# ==========================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.sqlite3
+env/
+venv/
+ENV/
+*.egg-info/
+*.egg
+*.db
+pip-log.txt
+*.env
+# ==========================================
+# FRONTEND BUILD
+# ==========================================
+dist/
+build/
+out/
+coverage/
+.hugo_build.lock
+.cache/
+.next/
+.nuxt/
+.svelte-kit/
+
+# ==========================================
+# ARQUIVOS DE CONFIGURAÇÃO LOCAL
+# ==========================================
+.env
+.env.*.local
+*.local
+*.secret
+secrets.json
+
+# ==========================================
+# IDEs E EDITORES
+# ==========================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ==========================================
+# OUTROS
+# ==========================================
+staticfiles/
+.mypy_cache/
+.pytest_cache/
+.cypress/
+playwright-report/
