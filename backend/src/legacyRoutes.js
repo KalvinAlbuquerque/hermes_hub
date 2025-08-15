@@ -21,45 +21,39 @@ router.get('/db-test', async (request, response) => {
 // --- ROTA DE CADASTRO DE USUÁRIO ---
 router.post('/users', async (request, response) => {
   try {
-    const { name, email, password } = request.body;
+    // Agora esperamos login e profileId no corpo da requisição
+    const { name, email, login, password, profileId } = request.body;
+
+    // Verifica se um perfil foi fornecido
+    if (!profileId) {
+      return response.status(400).json({ message: 'O perfil é obrigatório.' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = await prisma.user.create({
-      data: { name, email, password: hashedPassword },
+      data: {
+        name,
+        email,
+        login, // Adicionado
+        password: hashedPassword,
+        profileId, // Adicionado
+      },
     });
+
     delete newUser.password;
     return response.status(201).json(newUser);
   } catch (error) {
     if (error.code === 'P2002') {
-      return response.status(409).json({ message: 'Este e-mail já está em uso.' });
+      // Verifica qual campo único causou o conflito (email ou login)
+      const field = error.meta.target.includes('email') ? 'e-mail' : 'login';
+      return response.status(409).json({ message: `Este ${field} já está em uso.` });
     }
     console.error("Erro ao criar usuário:", error);
     return response.status(500).json({ message: 'Erro interno ao criar usuário.' });
   }
 });
 
-// --- NOVA ROTA PARA LISTAR USUÁRIOS ---
-router.get('/users', authMiddleware, async (request, response) => {
-  try {
-    const users = await prisma.user.findMany({
-      orderBy: {
-        name: 'asc', // Ordena os usuários por nome em ordem alfabética
-      },
-      select: {
-        // SELECIONA apenas os campos seguros para retornar. NUNCA retorne a senha!
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-      },
-    });
-
-    return response.json(users);
-
-  } catch (error) {
-    console.error("Erro ao listar usuários:", error);
-    return response.status(500).json({ message: 'Erro interno ao listar usuários.' });
-  }
-});
 
 // --- ROTA DE LOGIN ---
 router.post('/login', async (request, response) => {

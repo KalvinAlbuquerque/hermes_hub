@@ -1,19 +1,25 @@
-# 1. Usamos uma imagem base oficial do Node.js. A versão "alpine" é leve e segura.
+# backend/Dockerfile
+
+# 1. Usamos uma imagem base oficial do Node.js.
 FROM node:18-alpine
 
-# 2. Definimos o diretório de trabalho dentro do contêiner.
+# 2. Definimos o diretório de trabalho.
 WORKDIR /usr/app
 
 # 3. Copiamos os arquivos de definição do projeto.
-#    Fazemos isso em um passo separado para aproveitar o cache do Docker.
-#    Se não mudarmos as dependências, o Docker não roda o 'npm install' de novo.
 COPY package*.json ./
 
 # 4. Instalamos as dependências do projeto.
 RUN npm install
 
-# 5. Copiamos todo o resto do código do nosso projeto para o diretório de trabalho.
+# 5. Copiamos o schema do Prisma para a imagem
+COPY prisma ./prisma/
+
+# 6. Geramos o cliente Prisma DENTRO da imagem
+RUN npx prisma generate
+
+# 7. Copiamos o resto do código.
 COPY . .
 
-# 6. Definimos o comando padrão que será executado quando o contêiner iniciar.
+# 8. Definimos o comando padrão para iniciar.
 CMD [ "npm", "run", "dev" ]

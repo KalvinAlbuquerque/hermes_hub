@@ -7,8 +7,8 @@ import { usePathname } from 'next/navigation';
 const navLinks = [
   { name: 'Dashboard', href: '/dashboard' },
   { name: 'Enviar Notificação', href: '/send' },
-  { name: 'Gerenciar Usuários', href: '/users' },
-  { name: 'Gerenciar Perfis', href: '/profiles' },
+  { name: 'Gerenciar Usuários', href: '/admin/users' },
+  { name: 'Gerenciar Perfis', href: '/admin/profiles' },
   { name: 'Logs de Auditoria', href: '/audit-logs' },
 ];
 
@@ -27,11 +27,10 @@ export default function Sidebar() {
                 <Link
                   href={link.href}
                   // Adicionamos as classes dark:* para os links ativos e inativos
-                  className={`block px-4 py-2 rounded-md text-sm font-medium ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200'
-                      : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`}
+                  className={`block px-4 py-2 rounded-md text-sm font-medium ${isActive
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }`}
                 >
                   {link.name}
                 </Link>
