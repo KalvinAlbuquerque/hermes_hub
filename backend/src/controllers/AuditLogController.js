@@ -29,6 +29,7 @@ module.exports = {
       where.createdAt = { ...where.createdAt, lte: nextDay };
     }
 
+
     try {
       // 3. Usa o objeto 'where' nas duas consultas (para os dados e para a contagem total)
       const [logs, total] = await Promise.all([
@@ -50,6 +51,28 @@ module.exports = {
     } catch (error) {
       console.error('Erro ao buscar logs de auditoria:', error);
       return response.status(500).json({ message: 'Erro ao listar logs de auditoria.' });
+    }
+  },
+
+  async getDistinctActions(request, response) {
+    try {
+      const distinctActions = await prisma.auditLog.findMany({
+        select: {
+          action: true,
+        },
+        distinct: ['action'],
+        orderBy: {
+          action: 'asc',
+        },
+      });
+
+      // Extrai apenas os strings do array de objetos
+      const actionsList = distinctActions.map(item => item.action);
+
+      return response.json(actionsList);
+    } catch (error) {
+      console.error("Erro ao buscar ações distintas:", error);
+      return response.status(500).json({ message: 'Erro ao buscar lista de ações.' });
     }
   },
 };
