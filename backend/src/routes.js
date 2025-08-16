@@ -3,7 +3,7 @@ const { Router } = require('express');
 const TemplateController = require('./controllers/TemplateController');
 const NotificationController = require('./controllers/NotificationController');
 const authMiddleware = require('./middleware/auth');
-
+const DashboardController = require('./controllers/DashboardController'); 
 const routes = Router();
 
 // Rotas de Template
@@ -11,7 +11,7 @@ routes.get('/templates', authMiddleware, TemplateController.index);
 routes.post('/templates', authMiddleware, TemplateController.create);
 routes.put('/templates/:id', authMiddleware, TemplateController.update);
 routes.delete('/templates/:id', authMiddleware, TemplateController.destroy);
-
+routes.get('/dashboard/stats', authMiddleware, DashboardController.getStats); // <-- 2. ADICIONE AQUI
 // --- ROTAS DE NOTIFICAÇÃO ATUALIZADAS ---
 // Rota para um analista submeter uma notificação
 routes.post('/notifications/submit', authMiddleware, NotificationController.submit);

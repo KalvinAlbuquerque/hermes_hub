@@ -3,230 +3,99 @@
 
 import { useState, useEffect } from 'react';
 import withAuth from "@/components/withAuth";
-import api from '@/lib/api';
-import Modal from '@/components/Modal';
 import DashboardLayout from "@/components/DashboardLayout";
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import dynamic from 'next/dynamic'; // Importa a função 'dynamic'
+import { BarChart } from '@/components/charts/BarChart'; // Importa nosso novo componente
 
-// Cria o editor dinamicamente, desativando a renderização no servidor (SSR)
-const TiptapEditor = dynamic(() => import('@/components/Editor'), {
-  ssr: false,
-});
-// Define o "formato" de um template para o TypeScript
-interface Template {
-  id: string;
-  name: string;
-  subject: string;
-  body: string;
-  createdAt: string;
+// Tipagem para os dados que vamos receber da API
+interface DashboardStats {
+  notificationCounts: {
+    sent: number;
+    pending: number;
+    rejected: number;
+  };
+  topTemplates: { name: string; count: number }[];
+  topClientes: { name: string; count: number }[];
 }
 
+// Componente para os cards de estatísticas
+const StatCard = ({ title, value, colorClass }: { title: string; value: number; colorClass: string }) => (
+  <div className={`p-6 rounded-lg shadow-md ${colorClass}`}>
+    <h3 className="text-lg font-semibold text-white">{title}</h3>
+    <p className="text-4xl font-bold text-white mt-2">{value}</p>
+  </div>
+);
+
 function DashboardPage() {
-  // --- ESTADOS DA PÁGINA ---
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(''); // Mantemos para erro de carregamento inicial
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', subject: '', body: '' });
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-
-
-  // --- FUNÇÕES DE LÓGICA ---
-  const fetchTemplates = async (page = 1) => {
-    try {
-      setLoading(true);
-      // Agora passamos a página e o tamanho da página na requisição
-      const response = await api.get(`/templates?page=${page}&pageSize=10`);
-      setTemplates(response.data.data);
-      setTotalPages(response.data.totalPages);
-      setCurrentPage(page);
-    } catch (err) {
-      toast.error('Falha ao carregar os templates.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchTemplates(currentPage);
-  }, [currentPage]);
-
-  const handleDelete = (templateId: string) => {
-    // Toast de confirmação customizado com botões
-    toast((t) => (
-      <div className="flex flex-col items-center gap-2">
-        <p className="font-semibold">Tem certeza que deseja excluir?</p>
-        <div>
-          <button
-            onClick={() => {
-              toast.dismiss(t.id);
-              toast.promise(
-                api.delete(`/templates/${templateId}`).then(() => fetchTemplates()),
-                {
-                  loading: 'Excluindo...',
-                  success: <b>Template excluído com sucesso!</b>,
-                  error: <b>Falha ao excluir.</b>,
-                }
-              );
-            }}
-            className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 text-sm"
-          >
-            Confirmar
-          </button>
-          <button
-            onClick={() => toast.dismiss(t.id)}
-            className="ml-2 px-4 py-2 rounded-md text-gray-800 bg-gray-200 hover:bg-gray-300 text-sm"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    ));
-  };
-
-  const handleOpenModal = (template: Template | null) => {
-    if (template) {
-      setEditingTemplateId(template.id);
-      setFormData({ name: template.name, subject: template.subject, body: template.body });
-    } else {
-      setEditingTemplateId(null);
-      setFormData({ name: '', subject: '', body: '' });
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const promise = editingTemplateId
-      ? api.put(`/templates/${editingTemplateId}`, formData)
-      : api.post('/templates', formData);
-
-    toast.promise(
-      promise.then(() => {
-        setIsModalOpen(false);
-        fetchTemplates();
-      }),
-      {
-        loading: 'Salvando...',
-        success: <b>Template salvo com sucesso!</b>,
-        error: <b>Falha ao salvar.</b>,
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/dashboard/stats');
+        setStats(response.data);
+      } catch (err) {
+        toast.error('Falha ao carregar as estatísticas do dashboard.');
+      } finally {
+        setLoading(false);
       }
-    );
-  };
+    };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prevState => ({ ...prevState, [name]: value }));
-  };
+    fetchStats();
+  }, []);
 
-  // --- LÓGICA DE RENDERIZAÇÃO ---
-  if (loading && templates.length === 0) {
-    return <DashboardLayout><p className="dark:text-white">Carregando templates...</p></DashboardLayout>;
+  if (loading) {
+    return <DashboardLayout><p className="dark:text-white">Carregando dashboard...</p></DashboardLayout>;
   }
 
-  if (error) {
-    return <DashboardLayout><div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div></DashboardLayout>;
+  if (!stats) {
+    return <DashboardLayout><p className="dark:text-white">Não foi possível carregar os dados.</p></DashboardLayout>;
   }
+
+  // Prepara os dados para os gráficos
+  const topTemplatesChartData = {
+    labels: stats.topTemplates.map(t => t.name),
+    datasets: [{
+      label: 'Nº de Envios',
+      data: stats.topTemplates.map(t => t.count),
+      backgroundColor: 'rgba(54, 162, 235, 0.6)',
+    }],
+  };
+
+  const topClientesChartData = {
+    labels: stats.topClientes.map(c => c.name),
+    datasets: [{
+      label: 'Nº de Notificações Recebidas',
+      data: stats.topClientes.map(c => c.count),
+      backgroundColor: 'rgba(75, 192, 192, 0.6)',
+    }],
+  };
 
   return (
     <DashboardLayout>
-      {/* O card principal que agrupa todo o conteúdo da página */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Templates de Notificação</h2>
-          <button onClick={() => handleOpenModal(null)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-            + Novo Template
-          </button>
+      <div className="space-y-8">
+        {/* Seção de Cards de Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard title="Enviadas" value={stats.notificationCounts.sent} colorClass="bg-green-500" />
+          <StatCard title="Pendentes" value={stats.notificationCounts.pending} colorClass="bg-yellow-500" />
+          <StatCard title="Rejeitadas" value={stats.notificationCounts.rejected} colorClass="bg-red-500" />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Assunto</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {templates.length > 0 ? (
-                templates.map((template) => (
-                  <tr key={template.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{template.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{template.subject}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button onClick={() => handleOpenModal(template)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Editar</button>
-                      <button onClick={() => handleDelete(template.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ml-4">Excluir</button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                    Nenhum template encontrado.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="mt-4 flex justify-between items-center">
-            <button
-              onClick={() => setCurrentPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
-            >
-              Anterior
-            </button>
-            <span className="text-sm text-gray-700 dark:text-gray-400">
-              Página {currentPage} de {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
-            >
-              Próximo
-            </button>
+        {/* Seção de Gráficos */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+            <BarChart chartData={topTemplatesChartData} title="Top 5 Templates Mais Utilizados" />
           </div>
-        )}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+            <BarChart chartData={topClientesChartData} title="Top 5 Clientes Mais Notificados" />
+          </div>
+        </div>
       </div>
-
-      <Modal title={editingTemplateId ? "Editar Template" : "Criar Novo Template"} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <form onSubmit={handleFormSubmit}>
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Template</label>
-            <input type="text" name="name" id="name" value={formData.name} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" required />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assunto do E-mail</label>
-            <input type="text" name="subject" id="subject" value={formData.subject} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" required />
-          </div>
-
-          {/* A <textarea> foi substituída por este bloco */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Corpo do E-mail</label>
-            <div className="mt-1">
-              <TiptapEditor
-                content={formData.body}
-                onChange={(newContent) => setFormData(prev => ({ ...prev, body: newContent }))}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-4 mt-6">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
-            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Salvar</button>
-          </div>
-        </form>
-      </Modal>
     </DashboardLayout>
   );
 }
+
 export default withAuth(DashboardPage);
