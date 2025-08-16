@@ -5,7 +5,7 @@ const ProfileController = require('./controllers/ProfileController');
 const UserController = require('./controllers/UserController'); // 1. Importa o UserController
 const AuditLogController = require('./controllers/AuditLogController');
 const adminRoutes = Router();
-
+const ClienteController = require('./controllers/ClienteController'); 
 adminRoutes.use(authMiddleware);
 
 // Rotas para Perfis (Profiles)
@@ -20,5 +20,8 @@ adminRoutes.put('/users/:id', UserController.update);
 // A rota POST /users já existe em legacyRoutes, por isso não a adicionamos aqui.
 
 adminRoutes.get('/audit-logs', AuditLogController.index);
-
+adminRoutes.post('/clientes', ClienteController.create);
+adminRoutes.get('/clientes', ClienteController.index);
+adminRoutes.put('/clientes/:id', ClienteController.update);
+adminRoutes.delete('/clientes/:id', ClienteController.destroy)
 module.exports = adminRoutes;

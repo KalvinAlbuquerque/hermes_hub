@@ -44,6 +44,18 @@ model User {
   @@map("users")
 }
 
+model Cliente {
+  id     String   @id @default(uuid())
+  name   String   @unique
+  emails Json     // Armazena a lista de e-mails em formato JSON
+  status String   @default("ACTIVE") // Pode ser ACTIVE ou INACTIVE
+
+  // Relacionamento com os logs de notificação
+  notificationLogs NotificationLog[]
+
+  @@map("clientes")
+}
+
 
 model Template {
   id        String   @id @default(uuid())
@@ -83,7 +95,7 @@ model NotificationLog {
   approvedByUserId String?
   approvedByUser   User?   @relation("ApprovedByUser", fields: [approvedByUserId], references: [id])
   approvedAt       DateTime?
-
+  clientes      Cliente[]
   @@map("notification_logs")
 }
 

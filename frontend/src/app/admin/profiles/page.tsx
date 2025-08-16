@@ -143,6 +143,7 @@ function ManageProfilesPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{profile.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button onClick={() => handleOpenModal(profile)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400">Editar</button>
+                  <button onClick={() => handleDelete(profile.id, profile.name)} className="text-red-600 hover:text-red-900 dark:text-red-400 ml-4">Excluir</button>
                 </td>
               </tr>
             ))}
