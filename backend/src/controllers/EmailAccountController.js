@@ -34,8 +34,8 @@ module.exports = {
   async show(request, response) {
     const { id } = request.params;
     const account = await prisma.emailAccount.findUnique({
-        where: { id },
-        select: { id: true, name: true, email: true, status: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpSecure: true },
+      where: { id },
+      select: { id: true, name: true, email: true, status: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpSecure: true },
     });
     return response.json(account);
   },
@@ -47,8 +47,12 @@ module.exports = {
       const { name, email, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status } = request.body;
 
       const dataToUpdate = { name, email, smtpHost, smtpPort: parseInt(smtpPort), smtpUser, smtpSecure, status };
-      // Apenas encripta e atualiza a senha se uma nova for fornecida
-      if (smtpPass) {
+
+      // --- ALTERAÇÃO AQUI ---
+      // Agora, a senha é atualizada mesmo que seja uma string vazia.
+      // O 'if' verifica se a propriedade 'smtpPass' foi realmente enviada no pedido.
+      // Se não foi (undefined), não a alteramos. Se foi (incluindo ''), nós atualizamo-la.
+      if (smtpPass !== undefined) {
         dataToUpdate.smtpPass = encrypt(smtpPass);
       }
 

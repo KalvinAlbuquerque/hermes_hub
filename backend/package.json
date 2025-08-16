@@ -19,6 +19,7 @@
     "express": "^5.1.0",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
     "nodemailer": "^7.0.5",
     "pdfkit": "^0.17.1",
     "pg": "^8.16.3"

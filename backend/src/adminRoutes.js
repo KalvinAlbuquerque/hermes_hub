@@ -9,7 +9,7 @@ const ClienteController = require('./controllers/ClienteController');
 const ReportController = require('./controllers/ReportController'); 
 const SettingsController = require('./controllers/SettingsController');
 const EmailAccountController = require('./controllers/EmailAccountController');
-
+const CompanyController = require('./controllers/CompanyController'); 
 
 adminRoutes.post('/settings/test-smtp', SettingsController.testSmtp);
 adminRoutes.use(authMiddleware);
@@ -46,5 +46,9 @@ adminRoutes.get('/email-accounts', EmailAccountController.index);
 adminRoutes.get('/email-accounts/:id', EmailAccountController.show);
 adminRoutes.put('/email-accounts/:id', EmailAccountController.update);
 adminRoutes.delete('/email-accounts/:id', EmailAccountController.destroy);
+
+// --- ROTAS PARA GESTÃO DA EMPRESA ---
+adminRoutes.get('/company/settings', CompanyController.getSettings);
+adminRoutes.post('/company/logo', CompanyController.uploadLogo); //
 
 module.exports = adminRoutes;
