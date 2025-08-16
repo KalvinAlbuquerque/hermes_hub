@@ -72,7 +72,7 @@ function SendNotificationPage() {
         }
 
         try {
-            await api.post('/notifications/send', {
+            await api.post('/notifications/submit', {
                 templateId: selectedTemplateId,
                 recipients: recipientsArray,
                 variables: variables,

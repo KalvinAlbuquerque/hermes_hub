@@ -10,6 +10,7 @@ const navLinks = [
   { name: 'Gerenciar Usuários', href: '/admin/users' },
   { name: 'Gerenciar Perfis', href: '/admin/profiles' },
   { name: 'Logs de Auditoria', href: '/audit-logs' },
+   { name: 'Aprovações', href: '/approvals' }, 
 ];
 
 export default function Sidebar() {
