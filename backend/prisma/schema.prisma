@@ -68,7 +68,7 @@ model NotificationLog {
   status         String    // PENDING, APPROVED, REJECTED, SENT, FAILED
   sentAt         DateTime? // Opcional, preenchido apenas no envio
   createdAt      DateTime  @default(now())
-
+  rejectionReason  String?
   subject        String    // Assunto final da notificação
   body           String    // Corpo final com variáveis preenchidas
 

@@ -21,5 +21,6 @@ routes.get('/notifications', authMiddleware, NotificationController.index);
 
 // Rota para um aprovador aprovar uma notificação específica
 routes.post('/notifications/:id/approve', authMiddleware, NotificationController.approve);
-
+routes.get('/notifications/:id', authMiddleware, NotificationController.show);
+routes.post('/notifications/:id/reject', authMiddleware, NotificationController.reject);
 module.exports = routes;

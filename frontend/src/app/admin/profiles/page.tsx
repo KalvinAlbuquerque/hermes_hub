@@ -52,7 +52,7 @@ function ManageProfilesPage() {
       setFormData({ name: profile.name, permissions: profile.permissions || {} });
     } else {
       setEditingProfileId(null);
-      const initialPermissions = availablePermissions.reduce((acc, p) => ({...acc, [p.id]: false }), {});
+      const initialPermissions = availablePermissions.reduce((acc, p) => ({ ...acc, [p.id]: false }), {});
       setFormData({ name: '', permissions: initialPermissions });
     }
     setIsModalOpen(true);
@@ -85,6 +85,38 @@ function ManageProfilesPage() {
         error: <b>Falha ao salvar.</b>,
       }
     );
+  };
+  const handleDelete = (profileId: string, profileName: string) => {
+    toast((t) => (
+      <div className="flex flex-col items-center gap-2">
+        <p className="font-semibold">Excluir o perfil "{profileName}"?</p>
+        <p className="text-sm text-center">Esta ação não pode ser desfeita.</p>
+        <div>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              toast.promise(
+                api.delete(`/profiles/${profileId}`).then(() => fetchProfiles()),
+                {
+                  loading: 'Excluindo...',
+                  success: <b>Perfil excluído!</b>,
+                  error: (err) => err.response?.data?.message || <b>Falha ao excluir.</b>,
+                }
+              );
+            }}
+            className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 text-sm"
+          >
+            Confirmar Exclusão
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="ml-2 px-4 py-2 rounded-md text-gray-800 bg-gray-200 hover:bg-gray-300 text-sm"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    ));
   };
 
   if (loading) return <DashboardLayout><p>Carregando perfis...</p></DashboardLayout>;
@@ -127,7 +159,7 @@ function ManageProfilesPage() {
               name="name"
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               required
             />
