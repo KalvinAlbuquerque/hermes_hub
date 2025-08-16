@@ -31,6 +31,7 @@ services:
     # A LINHA ABAIXO PRECISA ESTAR INDENTADA NO MESMO NÍVEL DE 'environment', 'build', etc.
       - EMAIL_USER=svca.systemmail@gmail.com
       - EMAIL_PASS=ybitteppipuwvymo
+      - SETTINGS_ENCRYPTION_KEY=uma-chave-super-segura-de-32-bytes
     depends_on:
       - database
 

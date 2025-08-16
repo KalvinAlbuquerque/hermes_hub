@@ -73,6 +73,33 @@ model Template {
   @@map("templates")
 }
 
+model EmailAccount {
+  id        String    @id @default(uuid())
+  name      String    @unique // Ex: "Gmail Pessoal", "E-mail de Suporte"
+  email     String
+  smtpHost  String
+  smtpPort  Int
+  smtpUser  String
+  smtpPass  String    // Será armazenado encriptado
+  smtpSecure Boolean  @default(true)
+  status    String    @default("ACTIVE")
+
+  // Relacionamento com os logs para saber quantas vezes foi usada
+  notificationLogs NotificationLog[]
+
+  @@map("email_accounts")
+}
+
+model SystemSetting {
+  id        String    @id @default(uuid())
+  key       String    @unique // Ex: "smtpHost", "smtpUser", "smtpPass"
+  value     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("system_settings")
+}
+
 model NotificationLog {
   id             String    @id @default(uuid())
   // O recipientEmail será movido para um campo JSON para suportar múltiplos destinatários
@@ -83,6 +110,8 @@ model NotificationLog {
   rejectionReason  String?
   subject        String    // Assunto final da notificação
   body           String    // Corpo final com variáveis preenchidas
+  emailAccountId String?
+  emailAccount   EmailAccount? @relation(fields: [emailAccountId], references: [id])
 
   templateId String
   template   Template @relation(fields: [templateId], references: [id])

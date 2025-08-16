@@ -18,7 +18,7 @@ module.exports = {
   // Antiga função 'send', agora 'submit'
   async submit(request, response) {
     // Agora esperamos 'clienteIds' OU 'recipients' no corpo
-    const { templateId, clienteIds, recipients, variables } = request.body;
+    const { templateId, clienteIds, recipients, variables, emailAccountId } = request.body;
     const senderId = request.user.id;
 
     let finalRecipients = [];
@@ -92,10 +92,10 @@ module.exports = {
       // LÓGICA DE AUTO-APROVAÇÃO...
       try {
         for (const recipient of finalRecipients) {
-          await sendMail({ to: recipient, subject: finalSubject, html: finalBody });
+          await sendMail({ to: recipient, subject: finalSubject, html: finalBody, accountId: emailAccountId });
         }
         const newNotification = await prisma.notificationLog.create({
-          data: { ...notificationData, status: 'SENT', approvedByUserId: senderId, approvedAt: new Date(), sentAt: new Date() },
+          data: { ...notificationData, emailAccountId: emailAccountId, status: 'SENT', approvedByUserId: senderId, approvedAt: new Date(), sentAt: new Date() },
         });
         await logAction({ userId: senderId, action: 'NOTIFICATION_AUTO_APPROVED', details: { notificationId: newNotification.id, subject: finalSubject } });
 
@@ -218,7 +218,7 @@ module.exports = {
 
 
   // Nova função para aprovar e ENVIAR
-  async approve(request, response) {
+   async approve(request, response) {
     const { id } = request.params; // ID do NotificationLog
     const approverId = request.user.id;
 
@@ -228,13 +228,19 @@ module.exports = {
       if (!notification || notification.status !== 'PENDING') {
         return response.status(404).json({ message: 'Notificação não encontrada ou já processada.' });
       }
+      
+      // VERIFICAÇÃO IMPORTANTE: Garante que a notificação tem uma conta de envio associada.
+      if (!notification.emailAccountId) {
+          return response.status(500).json({ message: 'Erro: A notificação pendente não tem uma conta de e-mail de envio associada.'});
+      }
 
-      // Envia o e-mail para cada destinatário
+      // Envia o e-mail para cada destinatário usando a conta de e-mail guardada.
       for (const recipient of notification.recipients) {
         await sendMail({
           to: recipient,
           subject: notification.subject,
           html: notification.body,
+          accountId: notification.emailAccountId, // <-- PASSA O ID DA CONTA CORRETA
         });
       }
 
@@ -249,10 +255,11 @@ module.exports = {
         },
       });
 
+      // Log de auditoria para a aprovação
       await logAction({
-        userId: approverId,
-        action: 'NOTIFICATION_APPROVE',
-        details: { notificationId: id, subject: notification.subject }
+          userId: approverId,
+          action: 'NOTIFICATION_APPROVE',
+          details: { notificationId: id, subject: notification.subject }
       });
 
       return response.json({ message: 'Notificação aprovada e enviada.' });
@@ -265,4 +272,4 @@ module.exports = {
       return response.status(500).json({ message: 'Erro ao enviar notificação.' });
     }
   },
-};
+}

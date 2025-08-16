@@ -1,27 +1,34 @@
 // Arquivo: backend/src/services/EmailService.js
 const nodemailer = require('nodemailer');
+const prisma = require('../database/prisma');
+const { decrypt } = require('./SettingsService');
 
-// 1. Configura o "transportador" que fará a conexão com o Gmail
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // true for 465, false for other ports
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-// 2. Exporta a função que envia o e-mail
-async function sendMail({ to, subject, html }) {
+// Agora a função recebe o ID da conta a ser usada
+async function sendMail({ to, subject, html, accountId }) {
   try {
-    const info = await transporter.sendMail({
-      from: `"Hermes Hub" <${process.env.EMAIL_USER}>`,
-      to: to,
-      subject: subject,
-      html: html,
+    // 1. Busca a conta de e-mail específica no banco
+    const account = await prisma.emailAccount.findUnique({ where: { id: accountId } });
+
+    if (!account || account.status !== 'ACTIVE') {
+      return { success: false, error: 'Conta de e-mail não encontrada ou inativa.' };
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: account.smtpHost,
+      port: account.smtpPort,
+      secure: account.smtpSecure,
+      auth: {
+        user: account.smtpUser,
+        pass: decrypt(account.smtpPass), // Desencripta a senha
+      },
     });
-    console.log(`E-mail enviado para ${to}: ${info.messageId}`);
+
+    const info = await transporter.sendMail({
+      from: `"${account.name}" <${account.email}>`,
+      to, subject, html,
+    });
+
+    console.log(`E-mail enviado para ${to} usando ${account.email}: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error(`Erro ao enviar e-mail para ${to}:`, error);

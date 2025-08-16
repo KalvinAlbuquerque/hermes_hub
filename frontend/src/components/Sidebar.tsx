@@ -12,6 +12,8 @@ const navLinks = [
   { name: 'Logs de Auditoria', href: '/audit-logs' },
   { name: 'Aprovações', href: '/approvals' },
   { name: 'Gerenciar Clientes', href: '/admin/clientes' },
+  { name: 'Configurações', href: '/admin/settings' },
+  { name: 'Gerenciar Contas de E-mail', href: '/admin/email-accounts' },
 ];
 
 export default function Sidebar() {
