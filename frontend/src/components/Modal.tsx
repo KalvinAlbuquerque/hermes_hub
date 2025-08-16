@@ -12,14 +12,19 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-      {/* Adicionamos as classes dark:... aqui */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-4xl">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold dark:text-white">{title}</h3>
-          <button onClick={onClose} className="text-black dark:text-white text-2xl">&times;</button>
+    // Fundo semi-transparente
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex justify-center items-center">
+      {/* O modal agora usa a nossa classe .card para um estilo consistente */}
+      <div className="card w-full max-w-4xl max-h-[90vh] flex flex-col">
+        {/* Cabeçalho do Modal */}
+        <div className="flex justify-between items-center mb-4 pb-4 border-b border-border">
+          <h3 className="text-xl font-semibold text-foreground">{title}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-2xl transition-colors">&times;</button>
         </div>
-        <div>{children}</div>
+        {/* Conteúdo do Modal com scroll automático se for grande */}
+        <div className="overflow-y-auto pr-2">
+            {children}
+        </div>
       </div>
     </div>
   );

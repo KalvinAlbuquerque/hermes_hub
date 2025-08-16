@@ -3,27 +3,28 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { ThemeSwitcher } from './ThemeSwitcher'; // Importa o ThemeSwitcher
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 export default function Navbar() {
   const { isAuthenticated, logout } = useAuth();
 
   return (
-    <nav className="bg-gray-800 text-white p-4">
+    // Navbar com fundo transparente e borda inferior sutil
+    <nav className="bg-background/80 backdrop-blur-sm border-b border-border p-4 sticky top-0 z-40">
       <div className="container mx-auto flex justify-between items-center">
-        <Link href="/" className="text-xl font-bold">
+        <Link href="/" className="text-xl font-bold text-foreground hover:text-primary transition-colors">
           Hermes Hub
         </Link>
         {isAuthenticated && (
-          <div className="flex items-center gap-4">
-            {/* Links de navegação */}
-            <Link href="/dashboard" className="hover:text-gray-300 text-sm">Dashboard</Link>
-            <Link href="/send" className="hover:text-gray-300 text-sm">Enviar Notificação</Link>
+          <div className="flex items-center gap-6">
+            {/* Links de navegação com novo estilo */}
+            <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
+            <Link href="/send" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Enviar Notificação</Link>
 
-            {/* Div para agrupar botões de ação */}
-            <div className="flex items-center gap-2">
-              <ThemeSwitcher /> {/* Adiciona o botão de troca de tema */}
-              <button onClick={logout} className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-sm">
+            <div className="flex items-center gap-4">
+              <ThemeSwitcher />
+              {/* Botão Sair com o novo estilo */}
+              <button onClick={logout} className="btn-destructive">
                 Sair
               </button>
             </div>

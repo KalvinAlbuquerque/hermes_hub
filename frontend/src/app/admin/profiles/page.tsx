@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import Modal from '@/components/Modal';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
+import { Trash } from 'lucide-react'; // Importa o ícone
 
 interface Profile {
   id: string;
@@ -14,7 +15,6 @@ interface Profile {
   permissions: Record<string, boolean>;
 }
 
-// Lista de todas as permissões disponíveis no sistema
 const availablePermissions = [
   { id: 'canManageUsers', label: 'Gerenciar Usuários' },
   { id: 'canManageProfiles', label: 'Gerenciar Perfis' },
@@ -52,10 +52,32 @@ function ManageProfilesPage() {
       setFormData({ name: profile.name, permissions: profile.permissions || {} });
     } else {
       setEditingProfileId(null);
-      const initialPermissions = availablePermissions.reduce((acc, p) => ({ ...acc, [p.id]: false }), {});
+      const initialPermissions = availablePermissions.reduce((acc, p) => ({...acc, [p.id]: false }), {});
       setFormData({ name: '', permissions: initialPermissions });
     }
     setIsModalOpen(true);
+  };
+
+  const handleDelete = (profileId: string, profileName: string) => {
+    toast((t) => (
+      <div>
+        <p className="font-semibold">Tem certeza que deseja excluir o perfil "{profileName}"?</p>
+        <div className="mt-4 flex justify-end gap-2">
+            <button onClick={() => toast.dismiss(t.id)} className="btn-secondary">Cancelar</button>
+            <button onClick={() => {
+                toast.dismiss(t.id);
+                toast.promise(
+                    api.delete(`/profiles/${profileId}`).then(() => fetchProfiles()),
+                    {
+                        loading: 'Excluindo...',
+                        success: <b>Perfil excluído!</b>,
+                        error: (err) => err.response?.data?.message || <b>Falha ao excluir.</b>,
+                    }
+                );
+            }} className="btn-destructive">Excluir</button>
+        </div>
+      </div>
+    ));
   };
 
   const handlePermissionChange = (permissionId: string) => {
@@ -86,106 +108,72 @@ function ManageProfilesPage() {
       }
     );
   };
-  const handleDelete = (profileId: string, profileName: string) => {
-    toast((t) => (
-      <div className="flex flex-col items-center gap-2">
-        <p className="font-semibold">Excluir o perfil "{profileName}"?</p>
-        <p className="text-sm text-center">Esta ação não pode ser desfeita.</p>
-        <div>
-          <button
-            onClick={() => {
-              toast.dismiss(t.id);
-              toast.promise(
-                api.delete(`/profiles/${profileId}`).then(() => fetchProfiles()),
-                {
-                  loading: 'Excluindo...',
-                  success: <b>Perfil excluído!</b>,
-                  error: (err) => err.response?.data?.message || <b>Falha ao excluir.</b>,
-                }
-              );
-            }}
-            className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 text-sm"
-          >
-            Confirmar Exclusão
-          </button>
-          <button
-            onClick={() => toast.dismiss(t.id)}
-            className="ml-2 px-4 py-2 rounded-md text-gray-800 bg-gray-200 hover:bg-gray-300 text-sm"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    ));
-  };
 
   if (loading) return <DashboardLayout><p>Carregando perfis...</p></DashboardLayout>;
 
   return (
     <DashboardLayout>
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+      <div className="card">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Gerenciar Perfis</h2>
-          <button onClick={() => handleOpenModal(null)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          <h2 className="text-xl font-semibold text-foreground">Gerenciar Perfis</h2>
+          <button onClick={() => handleOpenModal(null)} className="btn-primary">
             + Novo Perfil
           </button>
         </div>
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Nome</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {profiles.map((profile) => (
-              <tr key={profile.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{profile.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button onClick={() => handleOpenModal(profile)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400">Editar</button>
-                  <button onClick={() => handleDelete(profile.id, profile.name)} className="text-red-600 hover:text-red-900 dark:text-red-400 ml-4">Excluir</button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-secondary/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Nome</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {profiles.map((profile) => (
+                <tr key={profile.id} onClick={() => handleOpenModal(profile)} className="hover:bg-secondary/30 transition-colors cursor-pointer">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">{profile.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(profile.id, profile.name); }} 
+                            className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-full">
+                      <Trash size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Modal title={editingProfileId ? "Editar Perfil" : "Criar Novo Perfil"} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <form onSubmit={handleFormSubmit}>
           <div className="mb-4">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Perfil</label>
+            <label htmlFor="name" className="block text-sm font-medium text-muted-foreground">Nome do Perfil</label>
             <input
-              type="text"
-              name="name"
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              required
+              type="text" name="name" id="name" value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              className="input-style" required
             />
           </div>
           <div className="mb-4">
-            <h3 className="block text-sm font-medium text-gray-700 dark:text-gray-300">Permissões</h3>
-            <div className="mt-2 space-y-2">
+            <h3 className="block text-sm font-medium text-muted-foreground">Permissões</h3>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
               {availablePermissions.map(p => (
                 <div key={p.id} className="flex items-center">
                   <input
-                    id={p.id}
-                    name={p.id}
-                    type="checkbox"
+                    id={p.id} name={p.id} type="checkbox"
                     checked={!!formData.permissions[p.id]}
                     onChange={() => handlePermissionChange(p.id)}
-                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                    className="h-4 w-4 text-primary bg-input border-border rounded focus:ring-ring"
                   />
-                  <label htmlFor={p.id} className="ml-2 block text-sm text-gray-900 dark:text-gray-200">{p.label}</label>
+                  <label htmlFor={p.id} className="ml-2 block text-sm text-foreground">{p.label}</label>
                 </div>
               ))}
             </div>
           </div>
           <div className="flex justify-end gap-4 mt-6">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
-            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Salvar</button>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" className="btn-primary">Salvar</button>
           </div>
         </form>
       </Modal>

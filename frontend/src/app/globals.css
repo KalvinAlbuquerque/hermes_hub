@@ -1,3 +1,51 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* Força o tema escuro como padrão */
+  :root, .dark {
+    --background: #0D1117;
+    --foreground: #E6EDF3;
+    --card: #161B22;
+    --border: #30363D;
+    --primary: #2F81F7;
+    --muted-foreground: #8D96A0;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Estilo base para os cards, agora com uma borda sutil */
+  .card {
+    @apply bg-card text-card-foreground p-6 rounded-lg border border-border shadow-md;
+  }
+
+  /* Estilo unificado para os inputs */
+  .input-style {
+    @apply mt-1 block w-full px-3 py-2 bg-input border border-border rounded-md 
+           placeholder-muted-foreground
+           focus:outline-none focus:ring-2 focus:ring-ring;
+  }
+
+  /* Classes de botões atualizadas */
+  .btn {
+    @apply px-4 py-2 inline-flex items-center justify-center rounded-md font-semibold text-sm 
+           transition-colors
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+  }
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+  .btn-secondary {
+    @apply btn bg-secondary hover:bg-secondary/90 border border-border;
+  }
+  .btn-destructive {
+    @apply btn bg-destructive text-destructive-foreground hover:bg-destructive/90;
+  }
+}

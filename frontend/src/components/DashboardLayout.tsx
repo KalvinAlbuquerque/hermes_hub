@@ -14,8 +14,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar />
-      {/* Adicionamos a cor de fundo para o modo escuro aqui */}
-      <main className="flex-1 p-8 overflow-y-auto bg-gray-100 dark:bg-gray-900">
+      {/* A cor de fundo agora será herdada do estilo global do <body>, que é o nosso preto/cinza-escuro */}
+      <main className="flex-1 p-8 overflow-y-auto">
         {children}
       </main>
     </div>
