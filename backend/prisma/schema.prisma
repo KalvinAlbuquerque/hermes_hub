@@ -40,7 +40,7 @@ model User {
   // Relações renomeadas e adicionadas
   submittedNotifications NotificationLog[] @relation("SubmittedByUser")
   approvedNotifications  NotificationLog[] @relation("ApprovedByUser")
-
+  auditLogs              AuditLog[]        @relation("UserAuditLogs")
   @@map("users")
 }
 
@@ -85,4 +85,18 @@ model NotificationLog {
   approvedAt       DateTime?
 
   @@map("notification_logs")
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  action      String    // Ex: "USER_LOGIN", "TEMPLATE_CREATE", "NOTIFICATION_APPROVE"
+  details     Json?     // Um JSON para guardar detalhes extras, como o nome do template criado
+  ipAddress   String?   // Opcional: para registrar o IP de quem fez a ação
+  createdAt   DateTime  @default(now())
+
+  // Relacionamento com o usuário que realizou a ação
+  userId      String
+  user        User      @relation("UserAuditLogs", fields: [userId], references: [id])
+
+  @@map("audit_logs")
 }

@@ -1,6 +1,6 @@
 // Arquivo: backend/src/controllers/TemplateController.js
 const prisma = require('../database/prisma');
-
+const { logAction } = require('../services/AuditLogService'); 
 module.exports = {
   // Criar um template
   async create(request, response) {
@@ -10,6 +10,12 @@ module.exports = {
 
       const newTemplate = await prisma.template.create({
         data: { name, subject, body, authorId },
+      });
+
+       await logAction({
+        userId: authorId,
+        action: 'TEMPLATE_CREATE',
+        details: { templateId: newTemplate.id, templateName: newTemplate.name }
       });
 
       return response.status(201).json(newTemplate);
@@ -62,6 +68,12 @@ module.exports = {
         data: { name, subject, body },
       });
 
+        await logAction({
+        userId: request.user.id,
+        action: 'TEMPLATE_UPDATE',
+        details: { templateId: updatedTemplate.id, newTemplateName: updatedTemplate.name }
+      });
+
       return response.json(updatedTemplate);
     } catch (error) {
       return response.status(500).json({ message: 'Erro ao atualizar template.' });
@@ -73,6 +85,13 @@ module.exports = {
     try {
       const { id } = request.params;
       await prisma.template.delete({ where: { id } });
+
+      await logAction({
+        userId: request.user.id,
+        action: 'TEMPLATE_DELETE',
+        details: { deletedTemplateId: id, deletedTemplateName: templateToDelete.name }
+      });
+      
       return response.status(204).send(); // 204 = Sucesso, sem conteúdo
     } catch (error) {
       return response.status(500).json({ message: 'Erro ao deletar template.' });

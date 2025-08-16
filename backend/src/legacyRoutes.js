@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('./database/prisma');
 const authMiddleware = require('./middleware/auth');
-
+const { logAction } = require('./services/AuditLogService'); 
 // 1. Criamos uma instância do Router em vez de usar o 'app'
 const router = Router();
 
@@ -38,6 +38,15 @@ router.post('/users', async (request, response) => {
         login, // Adicionado
         password: hashedPassword,
         profileId, // Adicionado
+      },
+    });
+     await logAction({
+      userId: newUser.id,
+      action: 'USER_CREATE',
+      details: {
+        createdUserId: newUser.id,
+        createdUserName: newUser.name,
+        createdUserEmail: newUser.email,
       },
     });
 

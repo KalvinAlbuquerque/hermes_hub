@@ -1,7 +1,7 @@
 // Arquivo: backend/src/controllers/UserController.js
 const prisma = require('../database/prisma');
 const bcrypt = require('bcryptjs');
-
+const { logAction } = require('../services/AuditLogService');
 module.exports = {
   // Listar todos os usuários (sem a senha)
   async index(request, response) {
@@ -46,6 +46,16 @@ module.exports = {
         data: dataToUpdate,
       });
 
+      await logAction({
+        userId: request.user.id, // O admin que está fazendo a edição
+        action: 'USER_UPDATE',
+        details: {
+          updatedUserId: user.id,
+          updatedUserName: user.name,
+          updatedFields: Object.keys(dataToUpdate) // Registra quais campos foram alterados
+        }
+      });
+      
       delete user.password; // Garante que a senha nunca seja retornada
       return response.json(user);
     } catch (error) {
