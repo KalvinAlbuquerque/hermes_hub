@@ -6,7 +6,7 @@ import withAuth from "@/components/withAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-
+import { saveAs } from 'file-saver';
 // Tipagem para os dados que vamos receber
 interface AuditLog {
     id: string;
@@ -82,7 +82,26 @@ function AuditLogsPage() {
         setFilters(clearedFilters);
         fetchLogs(1, clearedFilters);
     };
+    const handleExport = async (format: 'csv' | 'pdf') => {
+        toast.loading(`Gerando seu relatório ${format.toUpperCase()}...`, { id: 'export-toast' });
 
+        // Reutiliza os filtros atuais para a exportação
+        const params = new URLSearchParams(filters).toString();
+        const url = `/reports/audit-logs/${format}?${params}`;
+
+        try {
+            const response = await api.get(url, {
+                responseType: 'blob', // Importante: diz ao Axios para tratar a resposta como um ficheiro
+            });
+
+            const fileName = `relatorio_auditoria_${new Date().toISOString().split('T')[0]}.${format}`;
+            saveAs(response.data, fileName); // Usa o file-saver para descarregar
+
+            toast.success('Relatório gerado com sucesso!', { id: 'export-toast' });
+        } catch (error) {
+            toast.error('Falha ao gerar o relatório.', { id: 'export-toast' });
+        }
+    };
     return (
         <DashboardLayout>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
@@ -121,6 +140,12 @@ function AuditLogsPage() {
                     <div className="col-span-1 md:col-span-5 flex justify-end items-end gap-2">
                         <button onClick={handleClearFilters} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Limpar</button>
                         <button onClick={handleApplyFilters} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Filtrar</button>
+                        <button onClick={() => handleExport('csv')} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            Exportar CSV
+                        </button>
+                        <button onClick={() => handleExport('pdf')} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                            Exportar PDF
+                        </button>
                     </div>
                 </div>
                 <div className="overflow-x-auto">

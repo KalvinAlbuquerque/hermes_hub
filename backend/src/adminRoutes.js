@@ -7,7 +7,7 @@ const AuditLogController = require('./controllers/AuditLogController');
 const adminRoutes = Router();
 const ClienteController = require('./controllers/ClienteController'); 
 adminRoutes.use(authMiddleware);
-
+const ReportController = require('./controllers/ReportController'); 
 // Rotas para Perfis (Profiles)
 adminRoutes.post('/profiles', ProfileController.create);
 adminRoutes.get('/profiles', ProfileController.index);
@@ -24,4 +24,11 @@ adminRoutes.post('/clientes', ClienteController.create);
 adminRoutes.get('/clientes', ClienteController.index);
 adminRoutes.put('/clientes/:id', ClienteController.update);
 adminRoutes.delete('/clientes/:id', ClienteController.destroy)
+
+// --- NOVAS ROTAS PARA RELATÓRIOS ---
+adminRoutes.get('/reports/audit-logs/csv', ReportController.generateAuditLogsCSV);
+adminRoutes.get('/reports/audit-logs/pdf', ReportController.generateAuditLogsPDF);
+
+
+
 module.exports = adminRoutes;
