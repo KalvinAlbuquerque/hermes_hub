@@ -112,7 +112,7 @@ model NotificationLog {
   body           String    // Corpo final com variáveis preenchidas
   emailAccountId String?
   emailAccount   EmailAccount? @relation(fields: [emailAccountId], references: [id])
-
+  attachments    Json?     // <-- ADICIONE ESTA LINHA para guardar a lista de anexos
   templateId String
   template   Template @relation(fields: [templateId], references: [id])
 

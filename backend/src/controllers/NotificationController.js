@@ -2,6 +2,7 @@
 const prisma = require('../database/prisma');
 const { sendMail } = require('../services/EmailService');
 const { logAction } = require('../services/AuditLogService');
+
 module.exports = {
   // Lista todas as notificações (para a tela de aprovação)
   async index(request, response) {
@@ -17,20 +18,28 @@ module.exports = {
 
   // Antiga função 'send', agora 'submit'
   async submit(request, response) {
-    // Agora esperamos 'clienteIds' OU 'recipients' no corpo
-    const { templateId, clienteIds, recipients, variables, emailAccountId } = request.body;
+    // 1. Recebe 'finalSubject' e 'finalBody' diretamente do frontend, além das outras variáveis
+    const { templateId, clienteIds, recipients, emailAccountId, finalSubject, finalBody } = request.body;
     const senderId = request.user.id;
+
+    // Validações essenciais
+    if (!emailAccountId) {
+      return response.status(400).json({ message: 'Selecione uma conta de e-mail para o envio.' });
+    }
+    if (!templateId) {
+      // O templateId ainda é importante para associar o log e para relatórios futuros
+      return response.status(400).json({ message: 'Um template deve ser associado à notificação.' });
+    }
+    if (!finalSubject || !finalBody) {
+      return response.status(400).json({ message: 'O assunto e o corpo do e-mail não podem estar vazios.' });
+    }
 
     let finalRecipients = [];
     let clienteConnectData = {};
 
-    // 1. Lógica para determinar a lista final de e-mails
+    // Lógica para determinar a lista de destinatários (sem alterações)
     if (clienteIds && clienteIds.length > 0) {
-      // MODO CLIENTE: Busca os e-mails dos clientes selecionados
-      const clientes = await prisma.cliente.findMany({
-        where: { id: { in: clienteIds } },
-      });
-
+      const clientes = await prisma.cliente.findMany({ where: { id: { in: clienteIds } } });
       const emailSet = new Set();
       clientes.forEach(cli => {
         if (Array.isArray(cli.emails)) {
@@ -38,16 +47,8 @@ module.exports = {
         }
       });
       finalRecipients = Array.from(emailSet);
-
-      // Prepara o objeto para conectar o log aos clientes
-      clienteConnectData = {
-        clientes: {
-          connect: clienteIds.map(id => ({ id })),
-        },
-      };
-
+      clienteConnectData = { clientes: { connect: clienteIds.map(id => ({ id })) } };
     } else if (recipients && recipients.length > 0) {
-      // MODO MANUAL: Usa a lista de e-mails diretamente
       finalRecipients = recipients;
     } else {
       return response.status(400).json({ message: 'Nenhum destinatário foi fornecido.' });
@@ -57,81 +58,66 @@ module.exports = {
       return response.status(400).json({ message: 'A lista de destinatários está vazia.' });
     }
 
-    // --- O RESTO DA LÓGICA PERMANECE MUITO PARECIDO ---
+    const attachments = request.files ? request.files.map(file => ({
+      filename: file.originalname, // Nome original para o e-mail
+      path: file.path,             // Caminho absoluto no servidor para o nodemailer
+    })) : [];
+
+    const attachmentsForDb = request.files ? request.files.map(file => ({
+      filename: file.originalname,
+      storedFilename: file.filename, // Nome único guardado no servidor
+    })) : [];
+
     const sender = await prisma.user.findUnique({ where: { id: senderId }, include: { profile: true } });
-    if (!sender) {
-      return response.status(404).json({ message: 'Usuário remetente não encontrado.' });
-    }
-
-    const template = await prisma.template.findUnique({ where: { id: templateId } });
-    if (!template) {
-      return response.status(404).json({ message: 'Template não encontrado.' });
-    }
-
-    let finalSubject = template.subject;
-    let finalBody = template.body;
-    for (const key in variables) {
-      const regex = new RegExp(`\\[${key}\\]`, 'g');
-      finalSubject = finalSubject.replace(regex, variables[key]);
-      finalBody = finalBody.replace(regex, variables[key]);
-    }
-
     const canApprove = sender.profile.permissions?.canApproveNotifications;
 
-    // Prepara os dados base para o log de notificação
     const notificationData = {
       recipients: finalRecipients,
       subject: finalSubject,
       body: finalBody,
-      templateId: template.id,
+      templateId: templateId,
       submittedByUserId: senderId,
-      ...clienteConnectData, // Adiciona a conexão com clientes, se houver
+      emailAccountId: emailAccountId,
+      attachments: attachmentsForDb, // <-- Salva a informação dos anexos no banco
+      ...clienteConnectData,
     };
 
     if (canApprove) {
-      // LÓGICA DE AUTO-APROVAÇÃO...
+      // Lógica de auto-aprovação
       try {
         for (const recipient of finalRecipients) {
-          await sendMail({ to: recipient, subject: finalSubject, html: finalBody, accountId: emailAccountId });
+          await sendMail({ to: recipient, subject: finalSubject, html: finalBody, accountId: emailAccountId, attachments: attachments });
         }
         const newNotification = await prisma.notificationLog.create({
-          data: { ...notificationData, emailAccountId: emailAccountId, status: 'SENT', approvedByUserId: senderId, approvedAt: new Date(), sentAt: new Date() },
+          data: { ...notificationData, status: 'SENT', approvedByUserId: senderId, approvedAt: new Date(), sentAt: new Date() },
         });
         await logAction({ userId: senderId, action: 'NOTIFICATION_AUTO_APPROVED', details: { notificationId: newNotification.id, subject: finalSubject } });
-
-        // Retorna a mensagem de sucesso direto
         return response.status(200).json({ message: 'Notificação enviada com sucesso!' });
       } catch (error) {
         return response.status(500).json({ message: 'Erro ao enviar notificação.' });
       }
     } else {
-      // LÓGICA DE SUBMISSÃO PARA APROVAÇÃO...
+      // Lógica de submissão para aprovação
       const newNotification = await prisma.notificationLog.create({
         data: { ...notificationData, status: 'PENDING' },
       });
       await logAction({ userId: senderId, action: 'NOTIFICATION_SUBMITTED', details: { notificationId: newNotification.id, subject: finalSubject } });
 
-      const approvers = await prisma.user.findMany({
-        where: { profile: { permissions: { path: ['canApproveNotifications'], equals: true } } },
-      });
-
+      const approvers = await prisma.user.findMany({ where: { profile: { permissions: { path: ['canApproveNotifications'], equals: true } } } });
       for (const approver of approvers) {
+        // O e-mail para o aprovador usa o assunto final para dar mais contexto
         await sendMail({
           to: approver.email,
-          subject: '[Hermes Hub] Nova notificação para aprovação',
+          subject: `[PARA APROVAÇÃO] ${finalSubject}`,
           html: `
-                <h1>Revisão Necessária</h1>
-                <p>Olá, ${approver.name}.</p>
-                <p>Uma nova notificação, enviada por <strong>${sender.name}</strong>, está aguardando sua aprovação.</p>
-                <ul>
-                  <li><strong>Assunto:</strong> ${finalSubject}</li>
-                </ul>
-                <p>Por favor, acesse a <a href="http://localhost:3000/approvals">página de aprovações</a> para revisar e tomar uma ação.</p>
-              `,
+                    <h1>Revisão Necessária</h1>
+                    <p>Uma nova notificação, enviada por <strong>${sender.name}</strong>, está aguardando sua aprovação.</p>
+                    <p><strong>Assunto:</strong> ${finalSubject}</p>
+                    <p>Por favor, acesse a <a href="http://localhost:3000/approvals">página de aprovações</a> para revisar.</p>
+                `,
+          accountId: emailAccountId // Usa a conta selecionada para notificar o aprovador
         });
       }
-
-      // Retorna a mensagem de que foi para aprovação
       return response.status(201).json({ message: 'Sua notificação foi enviada para aprovação.' });
     }
   },
@@ -218,7 +204,7 @@ module.exports = {
 
 
   // Nova função para aprovar e ENVIAR
-   async approve(request, response) {
+  async approve(request, response) {
     const { id } = request.params; // ID do NotificationLog
     const approverId = request.user.id;
 
@@ -228,10 +214,10 @@ module.exports = {
       if (!notification || notification.status !== 'PENDING') {
         return response.status(404).json({ message: 'Notificação não encontrada ou já processada.' });
       }
-      
+
       // VERIFICAÇÃO IMPORTANTE: Garante que a notificação tem uma conta de envio associada.
       if (!notification.emailAccountId) {
-          return response.status(500).json({ message: 'Erro: A notificação pendente não tem uma conta de e-mail de envio associada.'});
+        return response.status(500).json({ message: 'Erro: A notificação pendente não tem uma conta de e-mail de envio associada.' });
       }
 
       // Envia o e-mail para cada destinatário usando a conta de e-mail guardada.
@@ -254,12 +240,21 @@ module.exports = {
           sentAt: new Date(),
         },
       });
+      const attachments = Array.isArray(notification.attachments) ? notification.attachments.map(att => ({
+            filename: att.filename,
+            path: path.resolve(__dirname, '..', '..', 'public', 'attachments', att.storedFilename)
+        })) : [];
+
+        for (const recipient of notification.recipients) {
+            // Passa os anexos para o sendMail
+            await sendMail({ to: recipient, subject: notification.subject, html: notification.body, accountId: notification.emailAccountId, attachments: attachments });
+        }
 
       // Log de auditoria para a aprovação
       await logAction({
-          userId: approverId,
-          action: 'NOTIFICATION_APPROVE',
-          details: { notificationId: id, subject: notification.subject }
+        userId: approverId,
+        action: 'NOTIFICATION_APPROVE',
+        details: { notificationId: id, subject: notification.subject }
       });
 
       return response.json({ message: 'Notificação aprovada e enviada.' });

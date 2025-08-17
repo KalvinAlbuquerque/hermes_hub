@@ -4,6 +4,7 @@ const TemplateController = require('./controllers/TemplateController');
 const NotificationController = require('./controllers/NotificationController');
 const DashboardController = require('./controllers/DashboardController');
 const authMiddleware = require('./middleware/auth');
+const AttachmentController = require('./controllers/AttachmentController'); 
 
 const routes = Router();
 
@@ -17,7 +18,7 @@ routes.put('/templates/:id', authMiddleware, TemplateController.update);
 routes.delete('/templates/:id', authMiddleware, TemplateController.destroy);
 
 // --- ROTAS DE AÇÃO DE NOTIFICAÇÃO ---
-routes.post('/notifications/submit', authMiddleware, NotificationController.submit);
+routes.post('/notifications/submit', authMiddleware, AttachmentController.handleUpload, NotificationController.submit); 
 routes.post('/notifications/:id/approve', authMiddleware, NotificationController.approve);
 routes.post('/notifications/:id/reject', authMiddleware, NotificationController.reject);
 
