@@ -7,6 +7,9 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { useEffect } from 'react';
+import Image from '@tiptap/extension-image';
+import api from '@/lib/api';
+import toast from 'react-hot-toast';
 
 const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
@@ -78,13 +81,44 @@ const TiptapEditor = ({ content, onChange }: EditorProps) => {
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             TextStyle,
             FontFamily,
+            Image,
         ],
         content: content,
-        // --- ALTERAÇÃO 1: Adiciona a propriedade para corrigir o erro de SSR <<<< ---
         immediatelyRender: false,
         editorProps: {
             attributes: {
                 class: 'prose prose-invert max-w-none min-h-[200px] p-4 focus:outline-none',
+            },
+            handlePaste: (view, event, slice) => {
+                const items = Array.from(event.clipboardData?.items || []);
+                let imagePasted = false;
+
+                items.forEach(item => {
+                    if (item.type.indexOf('image') === 0) {
+                        imagePasted = true;
+                        const file = item.getAsFile();
+                        if (!file) return;
+
+                        const reader = new FileReader();
+                        reader.onload = (readerEvent) => {
+                            const imageBase64 = readerEvent.target?.result;
+                            if (typeof imageBase64 === 'string') {
+                                const uploadPromise = api.post('/attachments/paste', { image: imageBase64 })
+                                    .then(response => {
+                                        editor?.chain().focus().setImage({ src: response.data.url }).run();
+                                    });
+                                
+                                toast.promise(uploadPromise, {
+                                    loading: 'Enviando imagem...',
+                                    success: 'Imagem inserida!',
+                                    error: 'Falha ao enviar a imagem.',
+                                });
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                return imagePasted;
             },
         },
         onUpdate: ({ editor }) => {
