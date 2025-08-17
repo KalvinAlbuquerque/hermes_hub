@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
-import { Upload, X, Paperclip } from 'lucide-react';
+import { Upload, X, Paperclip, FileUp } from 'lucide-react';
 
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 
@@ -18,7 +18,7 @@ interface EmailAccount { id: string; name: string; email: string; status: string
 
 function SendNotificationPage() {
     const [step, setStep] = useState(1);
-    
+
     // Estados para os dados carregados da API
     const [templates, setTemplates] = useState<Template[]>([]);
     const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -35,6 +35,8 @@ function SendNotificationPage() {
     const [editableSubject, setEditableSubject] = useState('');
     const [editableBody, setEditableBody] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
+    const [textFields, setTextFields] = useState<string[]>([]);
+    const [fileFields, setFileFields] = useState<string[]>([])
 
     // Carrega todos os dados iniciais
     useEffect(() => {
@@ -59,22 +61,38 @@ function SendNotificationPage() {
     useEffect(() => {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (selectedTemplate) {
-            const fields = selectedTemplate.body.match(/\[(.*?)\]/g)?.map(f => f.substring(1, f.length - 1)) || [];
-            const uniqueFields = [...new Set(fields)];
-            setDynamicFields(uniqueFields);
-            
-            const initialVariables = uniqueFields.reduce((acc, field) => ({ ...acc, [field]: '' }), {});
+            const allFields = selectedTemplate.body.match(/\[(.*?)\]/g)?.map(f => f.substring(1, f.length - 1)) || [];
+            const uniqueFields = [...new Set(allFields)];
+
+            const textVars: string[] = [];
+            const fileVars: string[] = [];
+
+            uniqueFields.forEach(field => {
+                if (field.toLowerCase().startsWith('anexar:')) {
+                    // Extrai o nome do anexo, ex: "Relatório PDF" de "Anexar: Relatório PDF"
+                    fileVars.push(field.substring(7).trim());
+                } else {
+                    textVars.push(field);
+                }
+            });
+
+            setTextFields(textVars);
+            setFileFields(fileVars);
+
+            const initialVariables = textVars.reduce((acc, field) => ({ ...acc, [field]: '' }), {});
             setVariables(initialVariables);
-            
+
             setEditableSubject(selectedTemplate.subject);
             setEditableBody(selectedTemplate.body);
         } else {
-            setDynamicFields([]);
+            setTextFields([]);
+            setFileFields([]);
             setVariables({});
             setEditableSubject('');
             setEditableBody('');
         }
     }, [selectedTemplateId, templates]);
+
 
     // Substitui as variáveis no conteúdo editável em tempo real
     useEffect(() => {
@@ -112,9 +130,9 @@ function SendNotificationPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const formData = new FormData();
-        
+
         formData.append('templateId', selectedTemplateId);
         formData.append('emailAccountId', selectedEmailAccountId);
         formData.append('finalSubject', editableSubject);
@@ -138,7 +156,7 @@ function SendNotificationPage() {
                 'Content-Type': 'multipart/form-data',
             },
         });
-        
+
         toast.promise(promise, {
             loading: 'Enviando...',
             success: (res) => {
@@ -155,7 +173,7 @@ function SendNotificationPage() {
         <DashboardLayout>
             <form onSubmit={handleSubmit}>
                 <div className="card max-w-4xl mx-auto">
-                    
+
                     {/* PASSO 1: Configuração e Destinatários */}
                     <div className={step === 1 ? 'block' : 'hidden'}>
                         <h2 className="text-xl font-semibold text-foreground">Passo 1: Configuração e Destinatários</h2>
@@ -178,18 +196,39 @@ function SendNotificationPage() {
                                         {templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
                                     </select>
                                 </div>
-                                {dynamicFields.length > 0 && (
-                                    <div className="space-y-4">
-                                        {dynamicFields.map(field => (
-                                            <div key={field}>
-                                                <label className="block text-sm font-medium text-muted-foreground">{field}</label>
-                                                <input type="text" value={variables[field] || ''} onChange={(e) => setVariables(prev => ({ ...prev, [field]: e.target.value }))} className="input-style" required />
-                                            </div>
-                                        ))}
+                                {textFields.length > 0 && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-foreground mb-4">Variáveis de Texto</h3>
+                                        <div className="space-y-4">
+                                            {textFields.map(field => (
+                                                <div key={field}>
+                                                    <label className="block text-sm font-medium text-muted-foreground">{field}</label>
+                                                    <input type="text" value={variables[field] || ''} onChange={(e) => setVariables(prev => ({ ...prev, [field]: e.target.value }))} className="input-style" required />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {fileFields.length > 0 && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-foreground mb-4">Anexos Guiados</h3>
+                                        <div className="space-y-4">
+                                            {fileFields.map(field => (
+                                                <div key={field}>
+                                                    <label className="block text-sm font-medium text-muted-foreground">{field}</label>
+                                                    <label htmlFor={`anexo-${field}`} className="relative flex w-full items-center justify-center rounded-md border border-border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-secondary cursor-pointer mt-1">
+                                                        <FileUp className="h-4 w-4 mr-2" />
+                                                        <span>Selecionar Ficheiro</span>
+                                                        <input id={`anexo-${field}`} type="file" className="hidden" onChange={handleFileChange} />
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                            {/* Coluna da Direita: Destinatários e Anexos */}
+                            {/* Coluna da Direita: Destinatários e Anexos Genéricos */}
                             <div className="space-y-6">
                                 <div>
                                     <h3 className="text-lg font-semibold text-foreground">Destinatários</h3>
@@ -213,10 +252,10 @@ function SendNotificationPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-foreground">Anexos</h3>
+                                    <h3 className="text-lg font-semibold text-foreground">Anexos Adicionais</h3>
                                     <div className="mt-2">
                                         <label htmlFor="attachment-upload" className="relative flex w-full items-center justify-center rounded-md border border-border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-secondary cursor-pointer">
-                                            <Upload className="h-4 w-4 mr-2"/>
+                                            <Upload className="h-4 w-4 mr-2" />
                                             <span>Adicionar Ficheiros</span>
                                             <input id="attachment-upload" type="file" className="hidden" multiple onChange={handleFileChange} />
                                         </label>
@@ -289,7 +328,7 @@ function SendNotificationPage() {
                                 <div>
                                     <h3 className="text-sm font-medium text-muted-foreground">Destinatários</h3>
                                     <div className="text-xs p-2 mt-1 bg-background rounded-md max-h-20 overflow-y-auto">
-                                        {recipientMode === 'clientes' 
+                                        {recipientMode === 'clientes'
                                             ? selectedClienteIds.map(id => clientes.find(c => c.id === id)?.name).join(', ')
                                             : manualRecipients.split(/[\n,;]+/).join(', ')
                                         }
@@ -322,6 +361,7 @@ function SendNotificationPage() {
             </form>
         </DashboardLayout>
     );
+
 }
 
 export default withAuth(SendNotificationPage);
