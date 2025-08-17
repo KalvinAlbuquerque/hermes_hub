@@ -14,7 +14,7 @@ async function sendMail({ to, subject, html, accountId, attachments = [] }) {
     const transporterOptions = {
       host: account.smtpHost,
       port: account.smtpPort,
-      secure: account.smtpSecure, // Deve ser false para a porta 587
+      secure: account.smtpSecure,
     };
 
     if (account.smtpUser) {
@@ -32,7 +32,8 @@ async function sendMail({ to, subject, html, accountId, attachments = [] }) {
         subject,
         html,
         attachments: attachments,
-        headers: { 'Content-Type': 'text/html' },
+        // A LINHA ABAIXO FOI REMOVIDA PARA CORRIGIR O PROBLEMA DE RENDERIZAÇÃO
+        // headers: { 'Content-Type': 'text/html' }, 
     };
 
     const info = await transporter.sendMail(mailOptions);
