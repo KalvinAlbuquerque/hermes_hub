@@ -1,6 +1,6 @@
 // Arquivo: backend/src/controllers/NotificationLogController.js
 const prisma = require('../database/prisma');
-
+const { logAction } = require('../services/AuditLogService');
 module.exports = {
   // Busca e filtra os logs de notificação
   async index(request, response) {
@@ -73,6 +73,35 @@ module.exports = {
       return response.json(log);
     } catch (error) {
       return response.status(500).json({ message: 'Erro ao buscar detalhes do log.' });
+    }
+  },
+
+  async closeIncident(request, response) {
+    try {
+      const { id } = request.params;
+      const userId = request.user.id; // O analista que está a fechar o caso
+
+      const notificationLog = await prisma.notificationLog.update({
+        where: { id },
+        data: {
+          incidentStatus: 'CLOSED',
+        },
+      });
+
+      // Regista a ação no log de auditoria
+      await logAction({
+        userId: userId,
+        action: 'INCIDENT_CLOSED',
+        details: {
+          notificationId: id,
+          subject: notificationLog.subject,
+        },
+      });
+
+      return response.json({ message: 'Incidente fechado com sucesso!' });
+    } catch (error) {
+      console.error("Erro ao fechar incidente:", error);
+      return response.status(500).json({ message: 'Erro ao fechar o incidente.' });
     }
   }
 };

@@ -115,7 +115,7 @@ model NotificationLog {
   attachments    Json?     // <-- ADICIONE ESTA LINHA para guardar a lista de anexos
   templateId String
   template   Template @relation(fields: [templateId], references: [id])
-
+  incidentStatus String    @default("OPEN") 
   // Analista que submeteu
   submittedByUserId String
   submittedByUser   User   @relation("SubmittedByUser", fields: [submittedByUserId], references: [id])
