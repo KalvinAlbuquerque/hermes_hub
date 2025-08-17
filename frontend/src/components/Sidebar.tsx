@@ -15,6 +15,7 @@ const navLinks = [
     icon: Settings,
     subLinks: [
       { name: 'Gerenciar Empresa', href: '/admin/company', icon: Building },
+      { name: 'Gerenciar Templates', href: '/admin/templates', icon: FileText }, // <-- ADICIONE ESTA LINHA
       { name: 'Gerenciar Usuários', href: '/admin/users', icon: Users },
       { name: 'Gerenciar Perfis', href: '/admin/profiles', icon: Shield },
       { name: 'Gerenciar Clientes', href: '/admin/clientes', icon: Users },
@@ -30,17 +31,16 @@ const navLinks = [
       { name: 'Notificações Enviadas', href: '/logs/notifications', icon: FileText },
     ]
   },
-  { name: 'Aprovações', href: '/approvals', icon: CheckSquare }, 
+  { name: 'Aprovações', href: '/approvals', icon: CheckSquare },
 ];
 
 // Componente para um único link (sem alterações)
 const NavLink = ({ link, isActive }: { link: { name: string, href: string, icon: React.ElementType }, isActive: boolean }) => (
   <Link href={link.href}
-    className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-      isActive
+    className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
         ? 'bg-primary text-primary-foreground'
         : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-    }`}
+      }`}
   >
     <link.icon className="h-4 w-4" />
     {link.name}
@@ -56,11 +56,10 @@ const CollapsibleNav = ({ item, pathname }: { item: any, pathname: string }) => 
   return (
     <div>
       <button onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-          isActive
+        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
             ? 'text-foreground'
             : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-        }`}
+          }`}
       >
         <div className="flex items-center gap-3">
           <item.icon className="h-4 w-4" />
@@ -97,9 +96,9 @@ export default function Sidebar() {
                   // 2. O valor de pathname é passado como prop para o componente filho
                   <CollapsibleNav item={item} pathname={pathname} />
                 ) : (
-                  <NavLink 
-                    link={item as any} 
-                    isActive={pathname.startsWith(item.href || '')} 
+                  <NavLink
+                    link={item as any}
+                    isActive={pathname.startsWith(item.href || '')}
                   />
                 )}
               </li>
