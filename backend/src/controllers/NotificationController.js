@@ -2,7 +2,7 @@
 const prisma = require('../database/prisma');
 const { sendMail } = require('../services/EmailService');
 const { logAction } = require('../services/AuditLogService');
-
+const path = require('path'); 
 module.exports = {
   // Lista todas as notificações (para a tela de aprovação)
   async index(request, response) {
@@ -204,8 +204,8 @@ module.exports = {
 
 
   // Nova função para aprovar e ENVIAR
-  async approve(request, response) {
-    const { id } = request.params; // ID do NotificationLog
+    async approve(request, response) {
+    const { id } = request.params;
     const approverId = request.user.id;
 
     try {
@@ -214,23 +214,30 @@ module.exports = {
       if (!notification || notification.status !== 'PENDING') {
         return response.status(404).json({ message: 'Notificação não encontrada ou já processada.' });
       }
-
-      // VERIFICAÇÃO IMPORTANTE: Garante que a notificação tem uma conta de envio associada.
       if (!notification.emailAccountId) {
-        return response.status(500).json({ message: 'Erro: A notificação pendente não tem uma conta de e-mail de envio associada.' });
+        return response.status(500).json({ message: 'Erro: A notificação não tem uma conta de e-mail de envio associada.' });
       }
 
-      // Envia o e-mail para cada destinatário usando a conta de e-mail guardada.
+      // Prepara a lista de anexos ANTES de enviar o e-mail
+      const attachments = Array.isArray(notification.attachments) 
+        ? notification.attachments.map(att => ({
+            filename: att.filename,
+            path: path.resolve(__dirname, '..', '..', 'public', 'attachments', att.storedFilename)
+          })) 
+        : [];
+
+      // Envia o e-mail UMA ÚNICA VEZ para cada destinatário, já com os anexos
       for (const recipient of notification.recipients) {
         await sendMail({
           to: recipient,
           subject: notification.subject,
           html: notification.body,
-          accountId: notification.emailAccountId, // <-- PASSA O ID DA CONTA CORRETA
+          accountId: notification.emailAccountId,
+          attachments: attachments // Passa os anexos aqui
         });
       }
 
-      // Atualiza o log no banco
+      // Atualiza o log no banco DEPOIS do envio bem-sucedido
       await prisma.notificationLog.update({
         where: { id },
         data: {
@@ -240,15 +247,6 @@ module.exports = {
           sentAt: new Date(),
         },
       });
-      const attachments = Array.isArray(notification.attachments) ? notification.attachments.map(att => ({
-            filename: att.filename,
-            path: path.resolve(__dirname, '..', '..', 'public', 'attachments', att.storedFilename)
-        })) : [];
-
-        for (const recipient of notification.recipients) {
-            // Passa os anexos para o sendMail
-            await sendMail({ to: recipient, subject: notification.subject, html: notification.body, accountId: notification.emailAccountId, attachments: attachments });
-        }
 
       // Log de auditoria para a aprovação
       await logAction({
@@ -258,8 +256,10 @@ module.exports = {
       });
 
       return response.json({ message: 'Notificação aprovada e enviada.' });
+
     } catch (error) {
-      // Se o envio falhar, ainda atualizamos o status para FAILED
+      console.error("Erro ao aprovar e enviar notificação:", error);
+      // Se o envio falhar, atualizamos o status para FAILED para registro
       await prisma.notificationLog.update({
         where: { id },
         data: { status: 'FAILED' },
@@ -268,3 +268,4 @@ module.exports = {
     }
   },
 }
+

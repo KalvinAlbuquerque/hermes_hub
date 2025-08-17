@@ -3,7 +3,6 @@ const nodemailer = require('nodemailer');
 const prisma = require('../database/prisma');
 const { decrypt } = require('./SettingsService');
 
-// A função agora aceita um array de anexos
 async function sendMail({ to, subject, html, accountId, attachments = [] }) {
   try {
     const account = await prisma.emailAccount.findUnique({ where: { id: accountId } });
@@ -15,7 +14,7 @@ async function sendMail({ to, subject, html, accountId, attachments = [] }) {
     const transporterOptions = {
       host: account.smtpHost,
       port: account.smtpPort,
-      secure: account.smtpSecure,
+      secure: account.smtpSecure, // Deve ser false para a porta 587
     };
 
     if (account.smtpUser) {
@@ -27,13 +26,13 @@ async function sendMail({ to, subject, html, accountId, attachments = [] }) {
 
     const transporter = nodemailer.createTransport(transporterOptions);
 
-    // Monta as opções do e-mail, incluindo os anexos
     const mailOptions = {
         from: `"${account.name}" <${account.email}>`,
         to,
         subject,
         html,
-        attachments: attachments, // <-- ANEXOS SÃO ADICIONADOS AQUI
+        attachments: attachments,
+        headers: { 'Content-Type': 'text/html' },
     };
 
     const info = await transporter.sendMail(mailOptions);

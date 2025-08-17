@@ -1,13 +1,13 @@
 // Arquivo: frontend/src/app/send/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import withAuth from "@/components/withAuth";
 import api from '@/lib/api';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
-import { Upload, X, Paperclip, FileUp } from 'lucide-react';
+import { Upload, X, Paperclip, FileUp, Image as ImageIcon, CheckCircle } from 'lucide-react';
 
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 
@@ -15,30 +15,30 @@ const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false }
 interface Template { id: string; name: string; body: string; subject: string; }
 interface Cliente { id: string; name: string; status: string; }
 interface EmailAccount { id: string; name: string; email: string; status: string; }
+interface ImageVariable {
+  fieldName: string;
+  file?: File;
+  url?: string;
+}
 
 function SendNotificationPage() {
     const [step, setStep] = useState(1);
-
-    // Estados para os dados carregados da API
     const [templates, setTemplates] = useState<Template[]>([]);
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
-
-    // Estados do formulário
     const [selectedEmailAccountId, setSelectedEmailAccountId] = useState('');
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [recipientMode, setRecipientMode] = useState<'clientes' | 'manual'>('clientes');
     const [manualRecipients, setManualRecipients] = useState('');
     const [selectedClienteIds, setSelectedClienteIds] = useState<string[]>([]);
     const [variables, setVariables] = useState<Record<string, string>>({});
-    const [dynamicFields, setDynamicFields] = useState<string[]>([]);
     const [editableSubject, setEditableSubject] = useState('');
     const [editableBody, setEditableBody] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
     const [textFields, setTextFields] = useState<string[]>([]);
-    const [fileFields, setFileFields] = useState<string[]>([])
+    const [fileFields, setFileFields] = useState<string[]>([]);
+    const [imageFields, setImageFields] = useState<ImageVariable[]>([]);
 
-    // Carrega todos os dados iniciais
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -57,87 +57,97 @@ function SendNotificationPage() {
         fetchData();
     }, []);
 
-    // Atualiza os campos dinâmicos e o conteúdo editável quando o template muda
+    // HOOK SIMPLIFICADO: Apenas extrai as variáveis, não faz substituição.
     useEffect(() => {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (selectedTemplate) {
-            const allFields = selectedTemplate.body.match(/\[(.*?)\]/g)?.map(f => f.substring(1, f.length - 1)) || [];
+            const contentToScan = selectedTemplate.subject + ' ' + selectedTemplate.body;
+            const allFields = contentToScan.match(/\[(.*?)\]/g)?.map(f => f.substring(1, f.length - 1)) || [];
             const uniqueFields = [...new Set(allFields)];
-
             const textVars: string[] = [];
             const fileVars: string[] = [];
-
+            const imageVars: ImageVariable[] = [];
             uniqueFields.forEach(field => {
                 if (field.toLowerCase().startsWith('anexar:')) {
-                    // Extrai o nome do anexo, ex: "Relatório PDF" de "Anexar: Relatório PDF"
                     fileVars.push(field.substring(7).trim());
+                } else if (field.toLowerCase().startsWith('imagem:')) {
+                    imageVars.push({ fieldName: field.substring(7).trim() });
                 } else {
                     textVars.push(field);
                 }
             });
-
             setTextFields(textVars);
             setFileFields(fileVars);
-
+            setImageFields(imageVars);
             const initialVariables = textVars.reduce((acc, field) => ({ ...acc, [field]: '' }), {});
             setVariables(initialVariables);
-
-            setEditableSubject(selectedTemplate.subject);
-            setEditableBody(selectedTemplate.body);
         } else {
-            setTextFields([]);
-            setFileFields([]);
-            setVariables({});
-            setEditableSubject('');
-            setEditableBody('');
+            // Limpa tudo
+            setTextFields([]); setFileFields([]); setImageFields([]); setVariables({});
         }
     }, [selectedTemplateId, templates]);
 
-
-    // Substitui as variáveis no conteúdo editável em tempo real
-    useEffect(() => {
+    // Função para lidar com o upload da imagem inline (agora só guarda o URL no estado)
+    const handleImageVariableUpload = useCallback(async (fieldName: string, file: File) => {
+        setImageFields(prevFields => prevFields.map(f => f.fieldName === fieldName ? { ...f, file } : f));
+        const imageBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target?.result as string);
+            reader.onerror = err => reject(err);
+            reader.readAsDataURL(file);
+        });
+        const toastId = toast.loading("A carregar imagem...");
+        try {
+            const response = await api.post('/attachments/paste', { image: imageBase64 });
+            const imageUrl = response.data.url;
+            setImageFields(prevFields => prevFields.map(f => f.fieldName === fieldName ? { ...f, url: imageUrl } : f));
+            toast.success("Imagem carregada!", { id: toastId });
+        } catch (error) {
+            toast.error("Falha ao carregar a imagem.", { id: toastId });
+            setImageFields(prevFields => prevFields.map(f => f.fieldName === fieldName ? { ...f, file: undefined } : f));
+        }
+    }, []);
+    
+    // FUNÇÃO ADICIONADA: Processa o conteúdo ANTES de ir para o Passo 2
+    const handleGoToStep2 = () => {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (!selectedTemplate) return;
 
         let newBody = selectedTemplate.body;
         let newSubject = selectedTemplate.subject;
+
+        // Substitui texto
         for (const key in variables) {
-            const regex = new RegExp(`\\[${key}\\]`, 'g');
-            if (variables[key]) {
-                newBody = newBody.replace(regex, variables[key]);
-                newSubject = newSubject.replace(regex, variables[key]);
-            }
+            const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\[${escapedKey}\\]`, 'g');
+            newBody = newBody.replace(regex, variables[key] || '');
+            newSubject = newSubject.replace(regex, variables[key] || '');
         }
+
+        // Substitui imagens
+        imageFields.forEach(field => {
+            if (field.url) {
+                const escapedKey = `Imagem: ${field.fieldName}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`\\[${escapedKey}\\]`, 'g');
+                newBody = newBody.replace(regex, `<img src="${field.url}" alt="${field.fieldName}" style="max-width: 100%; height: auto;" />`);
+            }
+        });
+
         setEditableBody(newBody);
         setEditableSubject(newSubject);
-    }, [variables, selectedTemplateId, templates]);
-
-
-    const handleClienteSelection = (clienteId: string) => {
-        setSelectedClienteIds(prev => prev.includes(clienteId) ? prev.filter(id => id !== clienteId) : [...prev, clienteId]);
+        setStep(2);
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const newFiles = Array.from(e.target.files);
-            setAttachments(prev => [...prev, ...newFiles]);
-        }
-    };
-
-    const removeAttachment = (fileToRemove: File) => {
-        setAttachments(prev => prev.filter(file => file !== fileToRemove));
-    };
-
+    const handleClienteSelection = (clienteId: string) => { setSelectedClienteIds(prev => prev.includes(clienteId) ? prev.filter(id => id !== clienteId) : [...prev, clienteId]); };
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) { const newFiles = Array.from(e.target.files); setAttachments(prev => [...prev, ...newFiles]); } };
+    const removeAttachment = (fileToRemove: File) => { setAttachments(prev => prev.filter(file => file !== fileToRemove)); };
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
         const formData = new FormData();
-
         formData.append('templateId', selectedTemplateId);
         formData.append('emailAccountId', selectedEmailAccountId);
         formData.append('finalSubject', editableSubject);
         formData.append('finalBody', editableBody);
-
         if (recipientMode === 'clientes') {
             if (selectedClienteIds.length === 0) { toast.error('Selecione ao menos um cliente.'); return; }
             selectedClienteIds.forEach(id => formData.append('clienteIds[]', id));
@@ -146,26 +156,12 @@ function SendNotificationPage() {
             if (recipientsArray.length === 0) { toast.error('Adicione ao menos um e-mail.'); return; }
             recipientsArray.forEach(email => formData.append('recipients[]', email));
         }
-
-        attachments.forEach(file => {
-            formData.append('attachments', file);
-        });
-
-        const promise = api.post('/notifications/submit', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-
+        attachments.forEach(file => { formData.append('attachments', file); });
+        const promise = api.post('/notifications/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' }, });
         toast.promise(promise, {
-            loading: 'Enviando...',
-            success: (res) => {
-                setStep(1);
-                setSelectedTemplateId('');
-                setAttachments([]);
-                return <b>{res.data.message}</b>;
-            },
-            error: (err) => err.response?.data?.message || <b>Falha ao enviar.</b>,
+            loading: 'A submeter notificação...',
+            success: (res) => { setStep(1); setSelectedTemplateId(''); setAttachments([]); return <b>{res.data.message}</b>; },
+            error: (err) => err.response?.data?.message || <b>Falha ao submeter.</b>,
         });
     };
 
@@ -173,14 +169,12 @@ function SendNotificationPage() {
         <DashboardLayout>
             <form onSubmit={handleSubmit}>
                 <div className="card max-w-4xl mx-auto">
-
                     {/* PASSO 1: Configuração e Destinatários */}
                     <div className={step === 1 ? 'block' : 'hidden'}>
                         <h2 className="text-xl font-semibold text-foreground">Passo 1: Configuração e Destinatários</h2>
                         <p className="text-sm text-muted-foreground mt-1">Defina o remetente, conteúdo, anexos e para quem enviar.</p>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                            {/* Coluna da Esquerda: Configuração */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 mt-6">
                             <div className="space-y-6">
                                 <div>
                                     <label className="block text-sm font-medium text-muted-foreground">Remetente</label>
@@ -191,7 +185,7 @@ function SendNotificationPage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-muted-foreground">Template</label>
-                                    <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)} className="input-style" required>
+                                    <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value) } className="input-style" required>
                                         <option value="">-- Escolha um template --</option>
                                         {templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
                                     </select>
@@ -209,7 +203,40 @@ function SendNotificationPage() {
                                         </div>
                                     </div>
                                 )}
-
+                                {imageFields.length > 0 && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-foreground mb-4">Variáveis de Imagem</h3>
+                                        <div className="space-y-4">
+                                            {imageFields.map(field => (
+                                                <div key={field.fieldName}>
+                                                    <label className="block text-sm font-medium text-muted-foreground">{field.fieldName}</label>
+                                                    <label htmlFor={`imagem-${field.fieldName}`} className="relative flex w-full items-center justify-center rounded-md border border-border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-secondary cursor-pointer mt-1">
+                                                        <ImageIcon className="h-4 w-4 mr-2" />
+                                                        <span>Selecionar Imagem</span>
+                                                        <input 
+                                                            id={`imagem-${field.fieldName}`}
+                                                            type="file" 
+                                                            accept="image/*"
+                                                            onChange={(e) => {
+                                                                if (e.target.files?.[0]) {
+                                                                    handleImageVariableUpload(field.fieldName, e.target.files[0]);
+                                                                    e.target.value = ''; 
+                                                                }
+                                                            }}
+                                                            className="hidden" 
+                                                        />
+                                                    </label>
+                                                    {field.file && (
+                                                        <div className="mt-2 flex items-center text-xs text-success">
+                                                            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                                                            <span>{field.file.name}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 {fileFields.length > 0 && (
                                     <div>
                                         <h3 className="text-lg font-semibold text-foreground mb-4">Anexos Guiados</h3>
@@ -228,7 +255,6 @@ function SendNotificationPage() {
                                     </div>
                                 )}
                             </div>
-                            {/* Coluna da Direita: Destinatários e Anexos Genéricos */}
                             <div className="space-y-6">
                                 <div>
                                     <h3 className="text-lg font-semibold text-foreground">Destinatários</h3>
@@ -283,11 +309,10 @@ function SendNotificationPage() {
                         </div>
 
                         <div className="flex justify-end mt-8">
-                            <button type="button" onClick={() => setStep(2)} className="btn-primary">Avançar para Edição</button>
+                            <button type="button" onClick={handleGoToStep2} className="btn-primary">Avançar para Edição</button>
                         </div>
                     </div>
 
-                    {/* PASSO 2: Edição do Conteúdo */}
                     <div className={step === 2 ? 'block' : 'hidden'}>
                         <h2 className="text-xl font-semibold text-foreground">Passo 2: Edição do Conteúdo</h2>
                         <p className="text-sm text-muted-foreground mt-1">Ajuste o texto final do assunto e do corpo do e-mail.</p>
@@ -309,7 +334,6 @@ function SendNotificationPage() {
                         </div>
                     </div>
 
-                    {/* PASSO 3: Revisão Final */}
                     <div className={step === 3 ? 'block' : 'hidden'}>
                         <h2 className="text-xl font-semibold text-foreground">Passo 3: Revisão Final</h2>
                         <p className="text-sm text-muted-foreground mt-1">Confirme todos os detalhes antes de enviar a notificação.</p>
@@ -361,7 +385,6 @@ function SendNotificationPage() {
             </form>
         </DashboardLayout>
     );
-
 }
 
 export default withAuth(SendNotificationPage);

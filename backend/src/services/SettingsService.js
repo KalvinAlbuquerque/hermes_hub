@@ -3,10 +3,20 @@ const prisma = require('../database/prisma');
 const crypto = require('crypto');
 
 const ALGORITHM = 'aes-256-cbc';
-// IMPORTANTE: Esta chave DEVE ser mantida em segredo e ter 32 caracteres.
-// Ela permanece nas variáveis de ambiente, pois é a "chave mestra" do cofre.
-const ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || 'a_default_32_character_secret_key'; // Use uma chave segura em produção
-const IV_LENGTH = 16; // Para AES, este é sempre 16
+const ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || 'a_default_32_character_key_!!__';
+const IV_LENGTH = 16;
+
+// --- NOVA TRAVA DE SEGURANÇA ---
+// Este código irá verificar a chave assim que o servidor arrancar.
+if (Buffer.from(ENCRYPTION_KEY).length !== 32) {
+  console.error('\n\n--- ERRO CRÍTICO DE CONFIGURAÇÃO ---');
+  console.error('A sua SETTINGS_ENCRYPTION_KEY é inválida.');
+  console.error(`O comprimento da chave é ${Buffer.from(ENCRYPTION_KEY).length}, mas precisa de ser exatamente 32 caracteres.`);
+  console.error('Verifique a sua variável de ambiente no ficheiro "docker-compose.yml".');
+  console.error('--- O SERVIDOR SERÁ ENCERRADO ---\n\n');
+  process.exit(1); // Encerra o processo com um código de erro.
+}
+// --- FIM DA TRAVA DE SEGURANÇA ---
 
 function encrypt(text) {
     const iv = crypto.randomBytes(IV_LENGTH);
@@ -17,6 +27,10 @@ function encrypt(text) {
 }
 
 function decrypt(text) {
+    if (!text || typeof text !== 'string' || !text.includes(':')) {
+        console.error("Tentativa de decriptografar um valor inválido:", text);
+        return ''; // Retorna uma string vazia para evitar que a aplicação quebre
+    }
     const textParts = text.split(':');
     const iv = Buffer.from(textParts.shift(), 'hex');
     const encryptedText = Buffer.from(textParts.join(':'), 'hex');
@@ -26,7 +40,7 @@ function decrypt(text) {
     return decrypted.toString();
 }
 
-// Busca todas as configurações e desencripta a palavra-passe do SMTP se existir
+// ... (o resto das funções, getSettings e updateSettings, permanecem iguais)
 async function getSettings() {
     const settingsList = await prisma.systemSetting.findMany();
     const settings = {};
@@ -40,7 +54,6 @@ async function getSettings() {
     return settings;
 }
 
-// Guarda as configurações, encriptando a palavra-passe do SMTP
 async function updateSettings(newSettings) {
     for (const key in newSettings) {
         let value = newSettings[key];
@@ -55,4 +68,4 @@ async function updateSettings(newSettings) {
     }
 }
 
-module.exports = { getSettings, updateSettings, encrypt, decrypt }; 
+module.exports = { getSettings, updateSettings, encrypt, decrypt };

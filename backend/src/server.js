@@ -10,6 +10,8 @@ const cronService = require('./services/CronService');
 const app = express();
 const PORT = 3333;
 
+console.log('[DEBUG] BACKEND_URL lida pelo Node.js:', process.env.BACKEND_URL);
+
 app.use(cors());
 
 // --- ALTERAÇÃO 1: AUMENTA O LIMITE PARA O CORPO DA REQUISIÇÃO <<<< ---

@@ -2,22 +2,44 @@
 const prisma = require('../database/prisma');
 const { logAction } = require('../services/AuditLogService');
 const { encrypt, decrypt } = require('../services/SettingsService'); // Reutilizamos a lógica de encriptação
-const nodemailer = require('nodemailer'); 
+const nodemailer = require('nodemailer');
 module.exports = {
   // Criar uma nova conta de e-mail
   async create(request, response) {
     try {
-      const { name, email, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure } = request.body;
-      const encryptedPass = encrypt(smtpPass); // Encripta a senha antes de salvar
+      const { name, email, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status } = request.body;
+
+      // Garante que a senha seja uma string antes de encriptar
+      const encryptedPass = encrypt(smtpPass || '');
 
       const account = await prisma.emailAccount.create({
-        data: { name, email, smtpHost, smtpPort: parseInt(smtpPort), smtpUser, smtpPass: encryptedPass, smtpSecure },
+        data: {
+          name,
+          email,
+          smtpHost,
+          smtpPort: parseInt(smtpPort),
+          smtpUser,
+          smtpPass: encryptedPass,
+          smtpSecure,
+          status
+        },
       });
 
       await logAction({ userId: request.user.id, action: 'EMAIL_ACCOUNT_CREATE', details: { accountId: account.id, accountName: account.name } });
       return response.status(201).json(account);
+
     } catch (error) {
-      return response.status(500).json({ message: 'Erro ao criar conta de e-mail.' });
+      // ADICIONADO LOG DETALHADO E TRATAMENTO DE ERRO ESPECIALIZADO
+      console.error("Erro ao criar conta de e-mail:", error); // Loga o erro completo no terminal do backend
+
+      // Verifica se o erro é de violação de campo único (ex: nome duplicado)
+      if (error.code === 'P2002') {
+        const field = error.meta?.target?.[0]; // Pega o nome do campo que falhou
+        return response.status(409).json({ message: `Uma conta com este '${field}' já existe.` });
+      }
+
+      // Para todos os outros erros, retorna uma mensagem genérica
+      return response.status(500).json({ message: 'Erro interno ao criar conta de e-mail.' });
     }
   },
 
