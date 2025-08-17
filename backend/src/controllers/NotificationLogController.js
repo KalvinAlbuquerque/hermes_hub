@@ -4,8 +4,7 @@ const { logAction } = require('../services/AuditLogService');
 module.exports = {
   // Busca e filtra os logs de notificação
   async index(request, response) {
-    const { page = 1, pageSize = 15, templateId, clienteId, status, submittedByUserId, approvedByUserId, subject, startDate, endDate } = request.query;
-    const pageNum = parseInt(page, 10);
+    const { page = 1, pageSize = 15, templateId, clienteId, status, submittedByUserId, approvedByUserId, subject, startDate, endDate, incidentStatus } = request.query;    const pageNum = parseInt(page, 10);
     const pageSizeNum = parseInt(pageSize, 10);
 
     const where = {};
@@ -15,7 +14,7 @@ module.exports = {
     if (submittedByUserId) where.submittedByUserId = submittedByUserId;
     if (approvedByUserId) where.approvedByUserId = approvedByUserId;
     if (clienteId) where.clientes = { some: { id: clienteId } };
-
+    if (incidentStatus) where.incidentStatus = incidentStatus;
     if (startDate) where.createdAt = { ...where.createdAt, gte: new Date(startDate) };
     if (endDate) {
       const nextDay = new Date(endDate);

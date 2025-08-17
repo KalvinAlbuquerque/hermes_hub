@@ -4,13 +4,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { LayoutDashboard, Send, Users, Shield, FileText, Settings, CheckSquare, History, ChevronDown, Monitor, Mail, Building } from 'lucide-react';
+import { LayoutDashboard, Send, Users, Shield, FileText, Settings, CheckSquare, History, ChevronDown, Monitor, Mail, Building, ShieldAlert, Activity } from 'lucide-react';
 
 // A estrutura de dados permanece a mesma
 const navLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Enviar Notificação', href: '/send', icon: Send },
-  {
+  { name: 'Gerenciar Incidentes', href: '/incidents', icon: Activity },  {
     name: 'Administração',
     icon: Settings,
     subLinks: [
@@ -38,8 +38,8 @@ const navLinks = [
 const NavLink = ({ link, isActive }: { link: { name: string, href: string, icon: React.ElementType }, isActive: boolean }) => (
   <Link href={link.href}
     className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
-        ? 'bg-primary text-primary-foreground'
-        : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+      ? 'bg-primary text-primary-foreground'
+      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
       }`}
   >
     <link.icon className="h-4 w-4" />
@@ -57,8 +57,8 @@ const CollapsibleNav = ({ item, pathname }: { item: any, pathname: string }) => 
     <div>
       <button onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
-            ? 'text-foreground'
-            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+          ? 'text-foreground'
+          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
           }`}
       >
         <div className="flex items-center gap-3">

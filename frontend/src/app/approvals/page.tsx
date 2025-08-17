@@ -7,8 +7,14 @@ import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import Modal from '@/components/Modal';
+import { Paperclip } from 'lucide-react'; // Importe o ícone
 
 // Tipagem dos dados
+interface Attachment {
+  filename: string;
+  storedFilename: string;
+}
+
 interface Notification {
   id: string;
   status: 'PENDING' | 'SENT' | 'REJECTED';
@@ -17,6 +23,7 @@ interface Notification {
   createdAt: string;
   submittedByUser: { name: string };
   template: { name: string };
+  attachments?: Attachment[]; // Adicione o campo de anexos
 }
 
 // Componente de Badge de Status
@@ -42,7 +49,6 @@ function ApprovalsPage() {
   const fetchPendingNotifications = async () => {
     try {
       setLoading(true);
-      // CORREÇÃO: Usa a nova rota de logs, filtrando por status PENDING
       const response = await api.get('/logs/notifications?status=PENDING');
       setNotifications(response.data.data);
     } catch (err) {
@@ -69,7 +75,7 @@ function ApprovalsPage() {
   const handleApprove = (notificationId: string) => {
     toast.promise(
       api.post(`/notifications/${notificationId}/approve`).then(() => {
-        fetchPendingNotifications(); // Atualiza a lista
+        fetchPendingNotifications();
         closeModal();
       }),
       {
@@ -87,7 +93,7 @@ function ApprovalsPage() {
     }
     toast.promise(
       api.post(`/notifications/${selectedNotification.id}/reject`, { reason: rejectionReason }).then(() => {
-        fetchPendingNotifications(); // Atualiza a lista
+        fetchPendingNotifications();
         closeModal();
       }),
       {
@@ -148,6 +154,22 @@ function ApprovalsPage() {
                   <div><h4 className="font-semibold text-sm text-muted-foreground">Enviado Por</h4><p>{selectedNotification.submittedByUser.name}</p></div>
                   <div><h4 className="font-semibold text-sm text-muted-foreground">Template</h4><p>{selectedNotification.template.name}</p></div>
                 </div>
+
+                {/* Bloco de Anexos */}
+                {selectedNotification.attachments && selectedNotification.attachments.length > 0 && (
+                  <div className="mb-4 pb-4 border-b border-border">
+                    <h4 className="font-semibold text-sm text-muted-foreground">Anexos ({selectedNotification.attachments.length})</h4>
+                    <ul className="mt-2 space-y-2">
+                      {selectedNotification.attachments.map((file, index) => (
+                        <li key={index} className="flex items-center text-sm p-2 rounded bg-background">
+                          <Paperclip className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                          <span className="text-foreground truncate">{file.filename}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="mb-4 pb-4 border-b border-border">
                     <h4 className="font-semibold text-sm text-muted-foreground">Pré-visualização do Corpo</h4>
                     <div className="mt-2 p-4 border border-border rounded-md bg-background max-h-60 overflow-y-auto">
