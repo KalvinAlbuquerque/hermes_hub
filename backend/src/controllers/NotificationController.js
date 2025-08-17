@@ -2,13 +2,14 @@
 const prisma = require('../database/prisma');
 const { sendMail } = require('../services/EmailService');
 const { logAction } = require('../services/AuditLogService');
-const path = require('path'); 
+const path = require('path');
+
 module.exports = {
-  // Lista todas as notificações (para a tela de aprovação)
+  // ... (a função index não muda)
   async index(request, response) {
     const notifications = await prisma.notificationLog.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { // Inclui dados do template e do usuário que submeteu
+      include: {
         template: { select: { name: true } },
         submittedByUser: { select: { name: true } },
       },
@@ -16,18 +17,14 @@ module.exports = {
     return response.json(notifications);
   },
 
-  // Antiga função 'send', agora 'submit'
   async submit(request, response) {
-    // 1. Recebe 'finalSubject' e 'finalBody' diretamente do frontend, além das outras variáveis
     const { templateId, clienteIds, recipients, emailAccountId, finalSubject, finalBody } = request.body;
     const senderId = request.user.id;
 
-    // Validações essenciais
     if (!emailAccountId) {
       return response.status(400).json({ message: 'Selecione uma conta de e-mail para o envio.' });
     }
     if (!templateId) {
-      // O templateId ainda é importante para associar o log e para relatórios futuros
       return response.status(400).json({ message: 'Um template deve ser associado à notificação.' });
     }
     if (!finalSubject || !finalBody) {
@@ -37,7 +34,6 @@ module.exports = {
     let finalRecipients = [];
     let clienteConnectData = {};
 
-    // Lógica para determinar a lista de destinatários (sem alterações)
     if (clienteIds && clienteIds.length > 0) {
       const clientes = await prisma.cliente.findMany({ where: { id: { in: clienteIds } } });
       const emailSet = new Set();
@@ -57,15 +53,10 @@ module.exports = {
     if (finalRecipients.length === 0) {
       return response.status(400).json({ message: 'A lista de destinatários está vazia.' });
     }
-
-    const attachments = request.files ? request.files.map(file => ({
-      filename: file.originalname, // Nome original para o e-mail
-      path: file.path,             // Caminho absoluto no servidor para o nodemailer
-    })) : [];
-
+    
     const attachmentsForDb = request.files ? request.files.map(file => ({
       filename: file.originalname,
-      storedFilename: file.filename, // Nome único guardado no servidor
+      storedFilename: file.filename,
     })) : [];
 
     const sender = await prisma.user.findUnique({ where: { id: senderId }, include: { profile: true } });
@@ -78,54 +69,49 @@ module.exports = {
       templateId: templateId,
       submittedByUserId: senderId,
       emailAccountId: emailAccountId,
-      attachments: attachmentsForDb, // <-- Salva a informação dos anexos no banco
+      attachments: attachmentsForDb,
       ...clienteConnectData,
     };
 
     if (canApprove) {
-      // Lógica de auto-aprovação
       try {
-        for (const recipient of finalRecipients) {
-          await sendMail({ to: recipient, subject: finalSubject, html: finalBody, accountId: emailAccountId, attachments: attachments });
-        }
         const newNotification = await prisma.notificationLog.create({
           data: { ...notificationData, status: 'SENT', approvedByUserId: senderId, approvedAt: new Date(), sentAt: new Date() },
         });
+
+        // CORREÇÃO: Usa module.exports para chamar a função
+        await module.exports.approveAndSend(newNotification);
+
         await logAction({ userId: senderId, action: 'NOTIFICATION_AUTO_APPROVED', details: { notificationId: newNotification.id, subject: finalSubject } });
         return response.status(200).json({ message: 'Notificação enviada com sucesso!' });
       } catch (error) {
+        console.error("Erro na auto-aprovação:", error);
         return response.status(500).json({ message: 'Erro ao enviar notificação.' });
       }
     } else {
-      // Lógica de submissão para aprovação
       const newNotification = await prisma.notificationLog.create({
         data: { ...notificationData, status: 'PENDING' },
       });
       await logAction({ userId: senderId, action: 'NOTIFICATION_SUBMITTED', details: { notificationId: newNotification.id, subject: finalSubject } });
-
+      
       const approvers = await prisma.user.findMany({ where: { profile: { permissions: { path: ['canApproveNotifications'], equals: true } } } });
       for (const approver of approvers) {
-        // O e-mail para o aprovador usa o assunto final para dar mais contexto
         await sendMail({
           to: approver.email,
           subject: `[PARA APROVAÇÃO] ${finalSubject}`,
-          html: `
-                    <h1>Revisão Necessária</h1>
-                    <p>Uma nova notificação, enviada por <strong>${sender.name}</strong>, está aguardando sua aprovação.</p>
-                    <p><strong>Assunto:</strong> ${finalSubject}</p>
-                    <p>Por favor, acesse a <a href="http://localhost:3000/approvals">página de aprovações</a> para revisar.</p>
-                `,
-          accountId: emailAccountId // Usa a conta selecionada para notificar o aprovador
+          html: `<h1>Revisão Necessária</h1><p>Uma nova notificação, enviada por <strong>${sender.name}</strong>, está aguardando sua aprovação.</p><p><strong>Assunto:</strong> ${finalSubject}</p><p>Por favor, acesse a <a href="http://localhost:3000/approvals">página de aprovações</a> para revisar.</p>`,
+          accountId: emailAccountId
         });
       }
+
       return response.status(201).json({ message: 'Sua notificação foi enviada para aprovação.' });
     }
   },
 
-
+  // ... (a função reject não muda)
   async reject(request, response) {
-    const { id } = request.params; // ID do NotificationLog
-    const { reason } = request.body; // Motivo da rejeição vindo do frontend
+    const { id } = request.params;
+    const { reason } = request.body;
     const approverId = request.user.id;
 
     if (!reason) {
@@ -135,37 +121,27 @@ module.exports = {
     try {
       const notification = await prisma.notificationLog.findUnique({
         where: { id },
-        include: { submittedByUser: true }, // Inclui todos os dados do remetente
+        include: { submittedByUser: true },
       });
 
       if (!notification || notification.status !== 'PENDING') {
         return response.status(404).json({ message: 'Notificação não encontrada ou já processada.' });
       }
 
-      // Atualiza o log no banco com o status e o motivo
       await prisma.notificationLog.update({
         where: { id },
         data: {
           status: 'REJECTED',
-          approvedByUserId: approverId, // A pessoa que rejeitou
+          approvedByUserId: approverId,
           approvedAt: new Date(),
           rejectionReason: reason,
         },
       });
 
-      // Envia o e-mail de notificação para o analista
       await sendMail({
         to: notification.submittedByUser.email,
         subject: `Notificação Rejeitada: "${notification.subject}"`,
-        html: `
-              <h1>Sua notificação foi rejeitada.</h1>
-              <p>A notificação com o assunto "<strong>${notification.subject}</strong>" foi rejeitada pelo aprovador.</p>
-              <hr>
-              <h3>Justificativa:</h3>
-              <p><em>${reason}</em></p>
-              <hr>
-              <p>Por favor, revise o conteúdo e submeta novamente se necessário.</p>
-          `,
+        html: `<h1>Sua notificação foi rejeitada.</h1><p>A notificação com o assunto "<strong>${notification.subject}</strong>" foi rejeitada pelo aprovador.</p><hr><h3>Justificativa:</h3><p><em>${reason}</em></p><hr><p>Por favor, revise o conteúdo e submeta novamente se necessário.</p>`,
       });
 
       await logAction({
@@ -181,6 +157,7 @@ module.exports = {
     }
   },
 
+  // ... (a função show não muda)
   async show(request, response) {
     try {
       const { id } = request.params;
@@ -201,10 +178,47 @@ module.exports = {
       return response.status(500).json({ message: 'Erro ao buscar detalhes da notificação.' });
     }
   },
+  
+  async approveAndSend(notification) {
+    const finalAttachments = Array.isArray(notification.attachments)
+      ? notification.attachments.map(att => ({
+          filename: att.filename,
+          path: path.resolve(__dirname, '..', '..', 'public', 'attachments', att.storedFilename)
+        }))
+      : [];
+    
+    const inlineImages = notification.body.match(/src="cid:[^"]+"/g) || [];
+    
+    inlineImages.forEach(imgTag => {
+      const cidWithExtension = imgTag.substring(9, imgTag.length - 1);
+      const cid = path.parse(cidWithExtension).name; // Extrai o nome do ficheiro sem extensão
+      
+      // Encontra o ficheiro correspondente no sistema de ficheiros
+      const attachmentPath = path.resolve(__dirname, '..', '..', 'public', 'attachments');
+      const files = require('fs').readdirSync(attachmentPath);
+      const filename = files.find(f => f.startsWith(cid));
 
+      if (filename) {
+          finalAttachments.push({
+            filename: filename,
+            path: path.resolve(attachmentPath, filename),
+            cid: cid 
+          });
+      }
+    });
 
-  // Nova função para aprovar e ENVIAR
-    async approve(request, response) {
+    for (const recipient of notification.recipients) {
+      await sendMail({
+        to: recipient,
+        subject: notification.subject,
+        html: notification.body,
+        accountId: notification.emailAccountId,
+        attachments: finalAttachments
+      });
+    }
+  },
+
+  async approve(request, response) {
     const { id } = request.params;
     const approverId = request.user.id;
 
@@ -217,27 +231,10 @@ module.exports = {
       if (!notification.emailAccountId) {
         return response.status(500).json({ message: 'Erro: A notificação não tem uma conta de e-mail de envio associada.' });
       }
+      
+      // CORREÇÃO: Usa module.exports para chamar a função
+      await module.exports.approveAndSend(notification);
 
-      // Prepara a lista de anexos ANTES de enviar o e-mail
-      const attachments = Array.isArray(notification.attachments) 
-        ? notification.attachments.map(att => ({
-            filename: att.filename,
-            path: path.resolve(__dirname, '..', '..', 'public', 'attachments', att.storedFilename)
-          })) 
-        : [];
-
-      // Envia o e-mail UMA ÚNICA VEZ para cada destinatário, já com os anexos
-      for (const recipient of notification.recipients) {
-        await sendMail({
-          to: recipient,
-          subject: notification.subject,
-          html: notification.body,
-          accountId: notification.emailAccountId,
-          attachments: attachments // Passa os anexos aqui
-        });
-      }
-
-      // Atualiza o log no banco DEPOIS do envio bem-sucedido
       await prisma.notificationLog.update({
         where: { id },
         data: {
@@ -248,7 +245,6 @@ module.exports = {
         },
       });
 
-      // Log de auditoria para a aprovação
       await logAction({
         userId: approverId,
         action: 'NOTIFICATION_APPROVE',
@@ -259,7 +255,6 @@ module.exports = {
 
     } catch (error) {
       console.error("Erro ao aprovar e enviar notificação:", error);
-      // Se o envio falhar, atualizamos o status para FAILED para registro
       await prisma.notificationLog.update({
         where: { id },
         data: { status: 'FAILED' },
@@ -268,4 +263,3 @@ module.exports = {
     }
   },
 }
-

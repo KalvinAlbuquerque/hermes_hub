@@ -1,27 +1,44 @@
 // Arquivo: frontend/src/app/send/page.tsx
 "use client";
 
+// ... (imports permanecem os mesmos)
 import { useState, useEffect, useCallback } from 'react';
 import withAuth from "@/components/withAuth";
 import api from '@/lib/api';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
-import { Upload, X, Paperclip, FileUp, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { Upload, X, Paperclip, FileUp } from 'lucide-react';
+
 
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 
-// Interfaces
+// ... (interfaces permanecem as mesmas)
 interface Template { id: string; name: string; body: string; subject: string; }
 interface Cliente { id: string; name: string; status: string; }
 interface EmailAccount { id: string; name: string; email: string; status: string; }
-interface ImageVariable {
-  fieldName: string;
-  file?: File;
-  url?: string;
-}
+
+
+// Função utilitária para converter o HTML de preview para o HTML final com CIDs
+const convertToCidHtml = (html: string): string => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const images = doc.querySelectorAll('img[data-cid]');
+  
+  images.forEach(img => {
+    const cid = img.getAttribute('data-cid');
+    if (cid) {
+      img.setAttribute('src', `cid:${cid}`);
+      img.removeAttribute('data-cid'); // Limpa o atributo para o HTML final
+    }
+  });
+
+  return doc.body.innerHTML;
+};
+
 
 function SendNotificationPage() {
+    // ... (toda a lógica de useState e useEffect permanece a mesma)
     const [step, setStep] = useState(1);
     const [templates, setTemplates] = useState<Template[]>([]);
     const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -36,8 +53,6 @@ function SendNotificationPage() {
     const [editableBody, setEditableBody] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
     const [textFields, setTextFields] = useState<string[]>([]);
-    const [fileFields, setFileFields] = useState<string[]>([]);
-    const [imageFields, setImageFields] = useState<ImageVariable[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -57,58 +72,21 @@ function SendNotificationPage() {
         fetchData();
     }, []);
 
-    // HOOK SIMPLIFICADO: Apenas extrai as variáveis, não faz substituição.
     useEffect(() => {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (selectedTemplate) {
             const contentToScan = selectedTemplate.subject + ' ' + selectedTemplate.body;
-            const allFields = contentToScan.match(/\[(.*?)\]/g)?.map(f => f.substring(1, f.length - 1)) || [];
-            const uniqueFields = [...new Set(allFields)];
-            const textVars: string[] = [];
-            const fileVars: string[] = [];
-            const imageVars: ImageVariable[] = [];
-            uniqueFields.forEach(field => {
-                if (field.toLowerCase().startsWith('anexar:')) {
-                    fileVars.push(field.substring(7).trim());
-                } else if (field.toLowerCase().startsWith('imagem:')) {
-                    imageVars.push({ fieldName: field.substring(7).trim() });
-                } else {
-                    textVars.push(field);
-                }
-            });
-            setTextFields(textVars);
-            setFileFields(fileVars);
-            setImageFields(imageVars);
-            const initialVariables = textVars.reduce((acc, field) => ({ ...acc, [field]: '' }), {});
-            setVariables(initialVariables);
+            const textFieldMatches = contentToScan.match(/\[(?!Imagem:|Anexar:)(.*?)\]/g)?.map(f => f.substring(1, f.length - 1)) || [];
+            const uniqueTextFields = [...new Set(textFieldMatches)];
+            
+            setTextFields(uniqueTextFields);
+            setVariables(uniqueTextFields.reduce((acc, field) => ({ ...acc, [field]: '' }), {}));
         } else {
-            // Limpa tudo
-            setTextFields([]); setFileFields([]); setImageFields([]); setVariables({});
+            setTextFields([]);
+            setVariables({});
         }
     }, [selectedTemplateId, templates]);
 
-    // Função para lidar com o upload da imagem inline (agora só guarda o URL no estado)
-    const handleImageVariableUpload = useCallback(async (fieldName: string, file: File) => {
-        setImageFields(prevFields => prevFields.map(f => f.fieldName === fieldName ? { ...f, file } : f));
-        const imageBase64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = e => resolve(e.target?.result as string);
-            reader.onerror = err => reject(err);
-            reader.readAsDataURL(file);
-        });
-        const toastId = toast.loading("A carregar imagem...");
-        try {
-            const response = await api.post('/attachments/paste', { image: imageBase64 });
-            const imageUrl = response.data.url;
-            setImageFields(prevFields => prevFields.map(f => f.fieldName === fieldName ? { ...f, url: imageUrl } : f));
-            toast.success("Imagem carregada!", { id: toastId });
-        } catch (error) {
-            toast.error("Falha ao carregar a imagem.", { id: toastId });
-            setImageFields(prevFields => prevFields.map(f => f.fieldName === fieldName ? { ...f, file: undefined } : f));
-        }
-    }, []);
-    
-    // FUNÇÃO ADICIONADA: Processa o conteúdo ANTES de ir para o Passo 2
     const handleGoToStep2 = () => {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (!selectedTemplate) return;
@@ -116,7 +94,6 @@ function SendNotificationPage() {
         let newBody = selectedTemplate.body;
         let newSubject = selectedTemplate.subject;
 
-        // Substitui texto
         for (const key in variables) {
             const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`\\[${escapedKey}\\]`, 'g');
@@ -124,14 +101,8 @@ function SendNotificationPage() {
             newSubject = newSubject.replace(regex, variables[key] || '');
         }
 
-        // Substitui imagens
-        imageFields.forEach(field => {
-            if (field.url) {
-                const escapedKey = `Imagem: ${field.fieldName}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(`\\[${escapedKey}\\]`, 'g');
-                newBody = newBody.replace(regex, `<img src="${field.url}" alt="${field.fieldName}" style="max-width: 100%; height: auto;" />`);
-            }
-        });
+        newBody = newBody.replace(/\[(Imagem:|Anexar:)[^\]]+\]/g, '');
+        newSubject = newSubject.replace(/\[(Imagem:|Anexar:)[^\]]+\]/g, '');
 
         setEditableBody(newBody);
         setEditableSubject(newSubject);
@@ -141,13 +112,19 @@ function SendNotificationPage() {
     const handleClienteSelection = (clienteId: string) => { setSelectedClienteIds(prev => prev.includes(clienteId) ? prev.filter(id => id !== clienteId) : [...prev, clienteId]); };
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) { const newFiles = Array.from(e.target.files); setAttachments(prev => [...prev, ...newFiles]); } };
     const removeAttachment = (fileToRemove: File) => { setAttachments(prev => prev.filter(file => file !== fileToRemove)); };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // ALTERAÇÃO: Converte o HTML para usar CIDs antes de enviar
+        const finalHtmlBody = convertToCidHtml(editableBody);
+
         const formData = new FormData();
         formData.append('templateId', selectedTemplateId);
         formData.append('emailAccountId', selectedEmailAccountId);
         formData.append('finalSubject', editableSubject);
-        formData.append('finalBody', editableBody);
+        formData.append('finalBody', finalHtmlBody); // Envia o HTML processado
+
         if (recipientMode === 'clientes') {
             if (selectedClienteIds.length === 0) { toast.error('Selecione ao menos um cliente.'); return; }
             selectedClienteIds.forEach(id => formData.append('clienteIds[]', id));
@@ -157,7 +134,9 @@ function SendNotificationPage() {
             recipientsArray.forEach(email => formData.append('recipients[]', email));
         }
         attachments.forEach(file => { formData.append('attachments', file); });
+        
         const promise = api.post('/notifications/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' }, });
+        
         toast.promise(promise, {
             loading: 'A submeter notificação...',
             success: (res) => { setStep(1); setSelectedTemplateId(''); setAttachments([]); return <b>{res.data.message}</b>; },
@@ -166,12 +145,13 @@ function SendNotificationPage() {
     };
 
     return (
+        // O JSX do formulário não muda
         <DashboardLayout>
             <form onSubmit={handleSubmit}>
                 <div className="card max-w-4xl mx-auto">
-                    {/* PASSO 1: Configuração e Destinatários */}
+                    {/* PASSO 1 */}
                     <div className={step === 1 ? 'block' : 'hidden'}>
-                        <h2 className="text-xl font-semibold text-foreground">Passo 1: Configuração e Destinatários</h2>
+                         <h2 className="text-xl font-semibold text-foreground">Passo 1: Configuração e Destinatários</h2>
                         <p className="text-sm text-muted-foreground mt-1">Defina o remetente, conteúdo, anexos e para quem enviar.</p>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 mt-6">
@@ -198,57 +178,6 @@ function SendNotificationPage() {
                                                 <div key={field}>
                                                     <label className="block text-sm font-medium text-muted-foreground">{field}</label>
                                                     <input type="text" value={variables[field] || ''} onChange={(e) => setVariables(prev => ({ ...prev, [field]: e.target.value }))} className="input-style" required />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {imageFields.length > 0 && (
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-foreground mb-4">Variáveis de Imagem</h3>
-                                        <div className="space-y-4">
-                                            {imageFields.map(field => (
-                                                <div key={field.fieldName}>
-                                                    <label className="block text-sm font-medium text-muted-foreground">{field.fieldName}</label>
-                                                    <label htmlFor={`imagem-${field.fieldName}`} className="relative flex w-full items-center justify-center rounded-md border border-border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-secondary cursor-pointer mt-1">
-                                                        <ImageIcon className="h-4 w-4 mr-2" />
-                                                        <span>Selecionar Imagem</span>
-                                                        <input 
-                                                            id={`imagem-${field.fieldName}`}
-                                                            type="file" 
-                                                            accept="image/*"
-                                                            onChange={(e) => {
-                                                                if (e.target.files?.[0]) {
-                                                                    handleImageVariableUpload(field.fieldName, e.target.files[0]);
-                                                                    e.target.value = ''; 
-                                                                }
-                                                            }}
-                                                            className="hidden" 
-                                                        />
-                                                    </label>
-                                                    {field.file && (
-                                                        <div className="mt-2 flex items-center text-xs text-success">
-                                                            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                                                            <span>{field.file.name}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {fileFields.length > 0 && (
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-foreground mb-4">Anexos Guiados</h3>
-                                        <div className="space-y-4">
-                                            {fileFields.map(field => (
-                                                <div key={field}>
-                                                    <label className="block text-sm font-medium text-muted-foreground">{field}</label>
-                                                    <label htmlFor={`anexo-${field}`} className="relative flex w-full items-center justify-center rounded-md border border-border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-secondary cursor-pointer mt-1">
-                                                        <FileUp className="h-4 w-4 mr-2" />
-                                                        <span>Selecionar Ficheiro</span>
-                                                        <input id={`anexo-${field}`} type="file" className="hidden" onChange={handleFileChange} />
-                                                    </label>
                                                 </div>
                                             ))}
                                         </div>
@@ -307,15 +236,14 @@ function SendNotificationPage() {
                                 </div>
                             </div>
                         </div>
-
                         <div className="flex justify-end mt-8">
                             <button type="button" onClick={handleGoToStep2} className="btn-primary">Avançar para Edição</button>
                         </div>
                     </div>
-
+                    {/* PASSO 2 */}
                     <div className={step === 2 ? 'block' : 'hidden'}>
                         <h2 className="text-xl font-semibold text-foreground">Passo 2: Edição do Conteúdo</h2>
-                        <p className="text-sm text-muted-foreground mt-1">Ajuste o texto final do assunto e do corpo do e-mail.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Ajuste o texto final do assunto e do corpo do e-mail. Cole imagens diretamente no editor.</p>
                         <div className="space-y-6 mt-6">
                             <div>
                                 <label className="block text-sm font-medium text-muted-foreground">Assunto</label>
@@ -333,7 +261,7 @@ function SendNotificationPage() {
                             <button type="button" onClick={() => setStep(3)} className="btn-primary">Avançar para Revisão Final</button>
                         </div>
                     </div>
-
+                    {/* PASSO 3 */}
                     <div className={step === 3 ? 'block' : 'hidden'}>
                         <h2 className="text-xl font-semibold text-foreground">Passo 3: Revisão Final</h2>
                         <p className="text-sm text-muted-foreground mt-1">Confirme todos os detalhes antes de enviar a notificação.</p>

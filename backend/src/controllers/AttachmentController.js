@@ -9,6 +9,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// ... (storage and upload config remains the same)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadsDir);
@@ -48,19 +49,20 @@ module.exports = {
       const extension = fileType.split('/')[1] || 'png';
       
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      
-      // LINHA CORRIGIDA/ADICIONADA: A variável 'filename' agora é definida.
       const filename = `pasted-${uniqueSuffix}.${extension}`;
-      
       const filePath = path.join(uploadsDir, filename);
 
       fs.writeFileSync(filePath, imageData);
 
       const publicUrl = `/files/attachments/${filename}`;
-      // Usa a variável de ambiente para criar o URL completo e público
       const fullUrl = `${process.env.BACKEND_URL || 'http://localhost:3333'}${publicUrl}`;
+      const cid = filename.split('.')[0];
 
-      return response.json({ url: fullUrl });
+      // ALTERAÇÃO: Retorna o URL público para preview E o CID para o e-mail.
+      return response.json({ 
+        url: fullUrl, // Para o preview no editor
+        cid: cid      // Para o e-mail final
+      });
 
     } catch (error) {
       console.error("Erro ao processar imagem colada:", error);
