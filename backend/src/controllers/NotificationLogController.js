@@ -102,5 +102,18 @@ module.exports = {
       console.error("Erro ao fechar incidente:", error);
       return response.status(500).json({ message: 'Erro ao fechar o incidente.' });
     }
-  }
+  },
+
+  async getReminders(request, response) {
+    try {
+      const { id } = request.params; // ID do NotificationLog
+      const reminders = await prisma.reminderLog.findMany({
+        where: { notificationLogId: id },
+        orderBy: { sentAt: 'asc' },
+      });
+      return response.json(reminders);
+    } catch (error) {
+      return response.status(500).json({ message: 'Erro ao buscar histórico de lembretes.' });
+    }
+  },
 };

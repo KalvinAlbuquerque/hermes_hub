@@ -6,6 +6,7 @@ const legacyRoutes = require('./legacyRoutes');
 const newRoutes = require('./routes');
 const adminRoutes = require('./adminRoutes');
 const logRoutes = require('./logRoutes');
+const cronService = require('./services/CronService');
 const app = express();
 const PORT = 3333;
 
@@ -25,7 +26,7 @@ app.use(legacyRoutes);
 app.use(newRoutes);
 app.use(adminRoutes);
 app.use(logRoutes);
-
+cronService.initialize();
 app.listen(PORT, () => {
   console.log(`🚀 Servidor Hermes Hub rodando na porta ${PORT}`);
 });
