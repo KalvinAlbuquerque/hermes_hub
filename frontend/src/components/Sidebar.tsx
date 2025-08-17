@@ -20,7 +20,6 @@ const navLinks = [
       { name: 'Gerenciar Perfis', href: '/admin/profiles', icon: Shield },
       { name: 'Gerenciar Clientes', href: '/admin/clientes', icon: Users },
       { name: 'Gerenciar Contas de E-mail', href: '/admin/email-accounts', icon: Mail },
-      { name: 'Configurações', href: '/admin/settings', icon: Settings },
     ]
   },
   {

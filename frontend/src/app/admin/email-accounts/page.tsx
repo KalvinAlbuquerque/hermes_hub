@@ -118,6 +118,24 @@ function ManageEmailAccountsPage() {
       }
     );
   };
+  const handleTestConnection = async () => {
+    // Validação para garantir que os campos necessários estão preenchidos no formulário
+    if (!formData.smtpHost || !formData.smtpPort || !formData.smtpUser || !formData.email) {
+      toast.error('Para testar, preencha Host, Porta, Usuário e E-mail do remetente.');
+      return;
+    }
+    // A senha não é obrigatória, alguns servidores podem não exigir
+
+    toast.promise(
+      api.post('/email-accounts/test-connection', formData),
+      {
+        loading: 'A testar conexão...',
+        success: (res) => <b>{res.data.message}</b>,
+        error: (err) => `Falha: ${err.response?.data?.message || 'Erro desconhecido.'}`,
+      },
+      { success: { duration: 6000 } } // Aumenta a duração do toast de sucesso
+    );
+  };
 
   if (loading) return <DashboardLayout><p>Carregando contas de e-mail...</p></DashboardLayout>;
 
@@ -194,9 +212,9 @@ function ManageEmailAccountsPage() {
                 value={formData.smtpPass || ''}
                 onChange={handleInputChange}
                 className="input-style"
-                placeholder={editingAccountId ? "Deixe em branco para não alterar" : "Deixe em branco se não houver senha"}
-              // A propriedade 'required' foi removida
-              />                </div>
+                placeholder={editingAccountId ? "Deixe em branco para não alterar" : ""}
+              />
+            </div>
             <div>
               <label className="text-sm font-medium text-muted-foreground">Status</label>
               <select name="status" value={formData.status || 'ACTIVE'} onChange={handleInputChange} className="input-style">
@@ -209,9 +227,14 @@ function ManageEmailAccountsPage() {
               <label htmlFor="smtpSecure" className="ml-2 text-sm text-foreground">Usar conexão segura (SSL/TLS)</label>
             </div>
           </div>
-          <div className="flex justify-end gap-4 mt-6">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
-            <button type="submit" className="btn-primary">Salvar</button>
+          
+          <div className="flex justify-between items-center mt-6">
+            <button type="button" onClick={handleTestConnection} className="btn-secondary">Testar Conexão</button>
+            
+            <div className="flex gap-4">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
+              <button type="submit" className="btn-primary">Salvar</button>
+            </div>
           </div>
         </form>
       </Modal>

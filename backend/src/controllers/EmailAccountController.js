@@ -2,7 +2,7 @@
 const prisma = require('../database/prisma');
 const { logAction } = require('../services/AuditLogService');
 const { encrypt, decrypt } = require('../services/SettingsService'); // Reutilizamos a lógica de encriptação
-
+const nodemailer = require('nodemailer'); 
 module.exports = {
   // Criar uma nova conta de e-mail
   async create(request, response) {
@@ -76,6 +76,45 @@ module.exports = {
       return response.status(204).send();
     } catch (error) {
       return response.status(500).json({ message: 'Erro ao deletar conta de e-mail.' });
+    }
+  },
+
+  async testConnection(request, response) {
+    // Os dados vêm diretamente do formulário, não do banco
+    const { smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, email } = request.body;
+
+    if (!smtpHost || !smtpPort || !smtpUser || !email) {
+      return response.status(400).json({ message: 'Host, Porta, Usuário e E-mail do remetente são necessários para o teste.' });
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure, // O frontend enviará true/false diretamente
+        auth: {
+          user: smtpUser,
+          pass: smtpPass, // A senha virá descriptografada do formulário
+        },
+        connectionTimeout: 10000, // 10 segundos
+      });
+
+      // Verifica a conexão
+      await transporter.verify();
+
+      // Envia um e-mail de teste para o próprio e-mail do remetente
+      await transporter.sendMail({
+        from: `"${smtpUser}" <${email}>`,
+        to: email,
+        subject: 'Hermes Hub - Teste de Conexão SMTP',
+        html: `<h1>Sucesso!</h1><p>Se você recebeu este e-mail, a sua configuração SMTP está correta!</p>`,
+      });
+
+      return response.json({ message: 'Conexão bem-sucedida! Um e-mail de teste foi enviado.' });
+
+    } catch (error) {
+      console.error("Falha no teste de SMTP:", error);
+      return response.status(500).json({ message: `Falha na conexão: ${error.message}` });
     }
   },
 };
