@@ -85,3 +85,4 @@ staticfiles/
 .pytest_cache/
 .cypress/
 playwright-report/
+backend/public/
