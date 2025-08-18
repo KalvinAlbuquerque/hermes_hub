@@ -1,4 +1,4 @@
-// Arquivo: frontend/src/app/dashboard/page.tsx
+// frontend/src/app/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -7,8 +7,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { BarChart } from '@/components/charts/BarChart';
+import { Settings, Eye, EyeOff } from 'lucide-react';
 
-// ALTERAÇÃO 1: Tipagem para os dados que vamos receber da API, agora com topSubmitters <<<<
 interface DashboardStats {
   notificationCounts: {
     sent: number;
@@ -17,10 +17,15 @@ interface DashboardStats {
   };
   topTemplates: { name: string; count: number }[];
   topClientes: { name: string; count: number }[];
-  topSubmitters: { name: string; count: number }[]; // <-- ADICIONADO
+  topSubmitters: { name: string; count: number }[];
 }
 
-// Componente para os cards de estatísticas (sem alterações)
+interface ChartVisibility {
+    topTemplates: boolean;
+    topClientes: boolean;
+    topSubmitters: boolean;
+}
+
 const StatCard = ({ title, value, valueColorClass = 'text-foreground' }: { title: string; value: number; valueColorClass?: string }) => (
   <div className="card">
     <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
@@ -31,6 +36,11 @@ const StatCard = ({ title, value, valueColorClass = 'text-foreground' }: { title
 function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [visibleCharts, setVisibleCharts] = useState<ChartVisibility>({
+      topTemplates: true,
+      topClientes: true,
+      topSubmitters: true,
+  });
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -47,6 +57,10 @@ function DashboardPage() {
     fetchStats();
   }, []);
 
+  const toggleChartVisibility = (chartKey: keyof ChartVisibility) => {
+      setVisibleCharts(prev => ({...prev, [chartKey]: !prev[chartKey]}));
+  }
+
   if (loading) {
     return <DashboardLayout><p>Carregando dashboard...</p></DashboardLayout>;
   }
@@ -55,15 +69,12 @@ function DashboardPage() {
     return <DashboardLayout><p>Não foi possível carregar os dados.</p></DashboardLayout>;
   }
 
-  // Prepara os dados para os gráficos
   const topTemplatesChartData = {
     labels: stats.topTemplates.map(t => t.name),
     datasets: [{
       label: 'Nº de Envios',
       data: stats.topTemplates.map(t => t.count),
       backgroundColor: 'rgba(47, 129, 247, 0.6)',
-      borderColor: '#2F81F7',
-      borderWidth: 1,
     }],
   };
   
@@ -73,50 +84,58 @@ function DashboardPage() {
       label: 'Nº de Notificações Recebidas',
       data: stats.topClientes.map(c => c.count),
       backgroundColor: 'rgba(35, 134, 54, 0.6)',
-      borderColor: '#238636',
-      borderWidth: 1,
     }],
   };
 
-  // ALTERAÇÃO 2: Prepara os dados para o novo gráfico de analistas <<<<
   const topSubmittersChartData = {
     labels: stats.topSubmitters.map(s => s.name),
     datasets: [{
       label: 'Nº de Notificações Submetidas',
       data: stats.topSubmitters.map(s => s.count),
-      backgroundColor: 'rgba(234, 179, 8, 0.6)', // Cor status-medium com transparência
-      borderColor: '#EAB308', // Cor status-medium
-      borderWidth: 1,
+      backgroundColor: 'rgba(234, 179, 8, 0.6)',
     }],
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Seção de Cards de Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard title="Enviadas" value={stats.notificationCounts.sent} valueColorClass="text-success" />
-          <StatCard title="Pendentes" value={stats.notificationCounts.pending} />
+          <StatCard title="Pendentes" value={stats.notificationCounts.pending} valueColorClass="text-yellow-500" />
           <StatCard title="Rejeitadas" value={stats.notificationCounts.rejected} valueColorClass="text-destructive" />
         </div>
 
-        {/* ALTERAÇÃO 3: Seção de Gráficos atualizada para 3 colunas <<<< */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Gráfico de Templates */}
-          <div className="card lg:col-span-1">
-            <h3 className="text-lg font-semibold mb-4">Top Templates</h3>
-            <BarChart chartData={topTemplatesChartData} title="" />
-          </div>
-          {/* Gráfico de Clientes */}
-          <div className="card lg:col-span-1">
-            <h3 className="text-lg font-semibold mb-4">Top Clientes Notificados</h3>
-            <BarChart chartData={topClientesChartData} title="" />
-          </div>
-          {/* NOVO Gráfico de Analistas */}
-          <div className="card lg:col-span-1">
-            <h3 className="text-lg font-semibold mb-4">Top Analistas</h3>
-            <BarChart chartData={topSubmittersChartData} title="" />
-          </div>
+        <div className="flex justify-between items-center border-t border-border pt-4">
+            <h2 className="text-xl font-semibold text-foreground">Análise Gráfica</h2>
+            <div className="flex items-center gap-4">
+                <button onClick={() => toggleChartVisibility('topTemplates')} className={`btn-secondary text-xs ${!visibleCharts.topTemplates && 'opacity-50'}`}>
+                    {visibleCharts.topTemplates ? <Eye className="h-4 w-4 mr-2"/> : <EyeOff className="h-4 w-4 mr-2"/>} Templates
+                </button>
+                <button onClick={() => toggleChartVisibility('topClientes')} className={`btn-secondary text-xs ${!visibleCharts.topClientes && 'opacity-50'}`}>
+                    {visibleCharts.topClientes ? <Eye className="h-4 w-4 mr-2"/> : <EyeOff className="h-4 w-4 mr-2"/>} Clientes
+                </button>
+                <button onClick={() => toggleChartVisibility('topSubmitters')} className={`btn-secondary text-xs ${!visibleCharts.topSubmitters && 'opacity-50'}`}>
+                    {visibleCharts.topSubmitters ? <Eye className="h-4 w-4 mr-2"/> : <EyeOff className="h-4 w-4 mr-2"/>} Analistas
+                </button>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {visibleCharts.topTemplates && (
+            <div className="card">
+              <BarChart chartData={topTemplatesChartData} title="Top 5 Templates Mais Utilizados" />
+            </div>
+          )}
+          {visibleCharts.topClientes && (
+            <div className="card">
+              <BarChart chartData={topClientesChartData} title="Top 5 Clientes Mais Notificados" />
+            </div>
+          )}
+          {visibleCharts.topSubmitters && (
+            <div className="card">
+              <BarChart chartData={topSubmittersChartData} title="Top 5 Analistas com Mais Envios" />
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

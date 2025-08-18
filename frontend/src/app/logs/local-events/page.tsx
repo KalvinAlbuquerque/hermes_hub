@@ -1,4 +1,4 @@
-// Arquivo: frontend/src/app/logs/local-events/page.tsx
+// frontend/src/app/logs/local-events/page.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -8,9 +8,8 @@ import Modal from '@/components/Modal';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { saveAs } from 'file-saver';
-import { UserPlus, UserCog, Shield, FilePlus, FilePenLine, FileX2, Check, X, Send, History } from 'lucide-react';
+import { UserPlus, UserCog, Shield, FilePlus, FilePenLine, FileX2, Check, X, Send, History, SlidersHorizontal } from 'lucide-react';
 
-// Tipagem para os dados
 interface AuditLog {
   id: string;
   action: string;
@@ -20,10 +19,9 @@ interface AuditLog {
 }
 interface User {
   id: string;
-  name: string;
+  name:string;
 }
 
-// Função para mapear ações a ícones
 const getActionIcon = (action: string) => {
   const IconMap: { [key: string]: React.ElementType } = {
     USER_CREATE: UserPlus,
@@ -40,9 +38,8 @@ const getActionIcon = (action: string) => {
     NOTIFICATION_REJECT: X,
     CLIENTE_CREATE: UserPlus,
     CLIENTE_UPDATE: UserCog,
-    // Adicione mais mapeamentos conforme necessário
   };
-  const Icon = IconMap[action] || History; // Ícone padrão
+  const Icon = IconMap[action] || History;
   return <Icon className="h-4 w-4 text-muted-foreground" />;
 };
 
@@ -59,6 +56,7 @@ function LocalEventsPage() {
   const [distinctActions, setDistinctActions] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [filtersVisible, setFiltersVisible] = useState(false);
 
   const fetchLogs = async (page = 1, currentFilters = filters) => {
     try {
@@ -135,42 +133,52 @@ function LocalEventsPage() {
   return (
     <DashboardLayout>
       <div className="card">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Eventos do Sistema (Auditoria)</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 p-4 border rounded-md border-border">
-          <div className="col-span-2">
-            <label htmlFor="userId" className="block text-sm font-medium text-muted-foreground">Usuário</label>
-            <select id="userId" name="userId" value={filters.userId} onChange={handleFilterChange} className="input-style">
-              <option value="">Todos os Usuários</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="action" className="block text-sm font-medium text-muted-foreground">Ação</label>
-            <select id="action" name="action" value={filters.action} onChange={handleFilterChange} className="input-style">
-                <option value="">Todas as Ações</option>
-                {distinctActions.map(actionName => (
-                    <option key={actionName} value={actionName}>{actionName}</option>
-                ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="startDate" className="block text-sm font-medium text-muted-foreground">Data Início</label>
-            <input type="date" id="startDate" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="input-style"/>
-          </div>
-          <div>
-            <label htmlFor="endDate" className="block text-sm font-medium text-muted-foreground">Data Fim</label>
-            <input type="date" id="endDate" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="input-style"/>
-          </div>
-          <div className="col-span-1 md:col-span-5 flex justify-end items-end gap-2">
-            <button onClick={() => handleExport('csv')} className="btn-secondary">Exportar CSV</button>
-            <button onClick={() => handleExport('pdf')} className="btn-secondary">Exportar PDF</button>
-            <button onClick={handleClearFilters} className="btn-secondary">Limpar</button>
-            <button onClick={handleApplyFilters} className="btn-primary">Filtrar</button>
-          </div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-foreground">Eventos do Sistema (Auditoria)</h2>
+          <button onClick={() => setFiltersVisible(!filtersVisible)} className="btn-secondary text-sm">
+            <SlidersHorizontal className="h-4 w-4 mr-2" />
+            {filtersVisible ? 'Esconder Filtros' : 'Mostrar Filtros'}
+          </button>
         </div>
+        
+        {filtersVisible && (
+          <div className="bg-secondary/30 p-4 rounded-md mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="col-span-1 md:col-span-2">
+                <label htmlFor="userId" className="block text-sm font-medium text-muted-foreground">Usuário</label>
+                <select id="userId" name="userId" value={filters.userId} onChange={handleFilterChange} className="input-style">
+                  <option value="">Todos os Usuários</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="action" className="block text-sm font-medium text-muted-foreground">Ação</label>
+                <select id="action" name="action" value={filters.action} onChange={handleFilterChange} className="input-style">
+                    <option value="">Todas as Ações</option>
+                    {distinctActions.map(actionName => (
+                        <option key={actionName} value={actionName}>{actionName}</option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="startDate" className="block text-sm font-medium text-muted-foreground">Data Início</label>
+                <input type="date" id="startDate" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="input-style"/>
+              </div>
+              <div>
+                <label htmlFor="endDate" className="block text-sm font-medium text-muted-foreground">Data Fim</label>
+                <input type="date" id="endDate" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="input-style"/>
+              </div>
+              <div className="col-span-1 lg:col-span-4 flex justify-end items-end gap-2 mt-2">
+                <button onClick={() => handleExport('csv')} className="btn-secondary">Exportar CSV</button>
+                <button onClick={() => handleExport('pdf')} className="btn-secondary">Exportar PDF</button>
+                <button onClick={handleClearFilters} className="btn-secondary">Limpar</button>
+                <button onClick={handleApplyFilters} className="btn-primary">Filtrar</button>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border">

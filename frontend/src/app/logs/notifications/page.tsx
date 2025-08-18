@@ -1,4 +1,4 @@
-// Arquivo: frontend/src/app/logs/notifications/page.tsx
+// frontend/src/app/logs/notifications/page.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -7,9 +7,9 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Modal from '@/components/Modal';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { saveAs } from 'file-saver'; // <-- IMPORTE AQUI
+import { saveAs } from 'file-saver';
+import { SlidersHorizontal } from 'lucide-react';
 
-// --- TIPAGEM DOS DADOS ---
 interface NotificationLog {
   id: string;
   subject: string;
@@ -34,11 +34,10 @@ interface DropdownData {
   templates: { id: string; name: string }[];
 }
 
-// --- COMPONENTE DO BADGE DE STATUS ---
 const StatusBadge = ({ status }: { status: string }) => {
   const statusStyles: { [key: string]: string } = {
     SENT: 'bg-success/20 text-success',
-    PENDING: 'bg-status-medium/20 text-status-medium',
+    PENDING: 'bg-yellow-500/20 text-yellow-500',
     REJECTED: 'bg-destructive/20 text-destructive',
     FAILED: 'bg-destructive/20 text-destructive',
   };
@@ -48,7 +47,6 @@ const StatusBadge = ({ status }: { status: string }) => {
     </span>
   );
 };
-
 
 function NotificationsLogPage() {
   const [logs, setLogs] = useState<NotificationLog[]>([]);
@@ -63,8 +61,8 @@ function NotificationsLogPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<NotificationLogDetails | null>(null);
+  const [filtersVisible, setFiltersVisible] = useState(false);
 
-  // Busca os dados para os dropdowns dos filtros
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
@@ -83,7 +81,7 @@ function NotificationsLogPage() {
       }
     };
     fetchDropdownData();
-    fetchLogs(1); // Busca os logs iniciais
+    fetchLogs(1);
   }, []);
 
   const fetchLogs = async (page = 1, currentFilters = filters) => {
@@ -140,41 +138,60 @@ function NotificationsLogPage() {
   return (
     <DashboardLayout>
       <div className="card">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Log de Notificações Enviadas</h2>
-
-        {/* Filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 border rounded-md border-border">
-          <input name="subject" value={filters.subject} onChange={handleFilterChange} placeholder="Pesquisar por assunto..." className="input-style md:col-span-4" />
-          <select name="templateId" value={filters.templateId} onChange={handleFilterChange} className="input-style">
-            <option value="">Todos os Templates</option>
-            {dropdownData.templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <select name="clienteId" value={filters.clienteId} onChange={handleFilterChange} className="input-style">
-            <option value="">Todos os Clientes</option>
-            {dropdownData.clientes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select name="submittedByUserId" value={filters.submittedByUserId} onChange={handleFilterChange} className="input-style">
-            <option value="">Todos os Remetentes</option>
-            {dropdownData.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="input-style">
-            <option value="">Todos os Status</option>
-            <option value="SENT">Enviado</option>
-            <option value="PENDING">Pendente</option>
-            <option value="REJECTED">Rejeitado</option>
-          </select>
-          <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="input-style" />
-          <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="input-style" />
-          <div className="md:col-span-4 flex justify-end items-end gap-2">
-            <button onClick={() => handleExport('csv')} className="btn-secondary">Exportar CSV</button>
-            <button onClick={() => handleExport('pdf')} className="btn-secondary">Exportar PDF</button>
-
-            <button onClick={handleClearFilters} className="btn-secondary">Limpar</button>
-            <button onClick={handleApplyFilters} className="btn-primary">Filtrar</button>
-          </div>
+        <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-foreground">Log de Notificações Enviadas</h2>
+            <button onClick={() => setFiltersVisible(!filtersVisible)} className="btn-secondary text-sm">
+                <SlidersHorizontal className="h-4 w-4 mr-2" />
+                {filtersVisible ? 'Esconder Filtros' : 'Mostrar Filtros'}
+            </button>
         </div>
 
-        {/* Tabela */}
+        {filtersVisible && (
+            <div className="bg-secondary/30 p-4 rounded-md mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="col-span-1 md:col-span-2 lg:col-span-4">
+                        <label htmlFor="subject" className="block text-sm font-medium text-muted-foreground">Assunto</label>
+                        <input name="subject" value={filters.subject} onChange={handleFilterChange} placeholder="Pesquisar por assunto..." className="input-style" />
+                    </div>
+                    
+                    <select name="templateId" value={filters.templateId} onChange={handleFilterChange} className="input-style">
+                        <option value="">Todos os Templates</option>
+                        {dropdownData.templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                    <select name="clienteId" value={filters.clienteId} onChange={handleFilterChange} className="input-style">
+                        <option value="">Todos os Clientes</option>
+                        {dropdownData.clientes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <select name="submittedByUserId" value={filters.submittedByUserId} onChange={handleFilterChange} className="input-style">
+                        <option value="">Todos os Remetentes</option>
+                        {dropdownData.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                    <select name="status" value={filters.status} onChange={handleFilterChange} className="input-style">
+                        <option value="">Todos os Status</option>
+                        <option value="SENT">Enviado</option>
+                        <option value="PENDING">Pendente</option>
+                        <option value="REJECTED">Rejeitado</option>
+                    </select>
+
+                    <div>
+                        <label htmlFor="startDate" className="block text-sm font-medium text-muted-foreground">Data Início</label>
+                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="input-style" />
+                    </div>
+                    <div>
+                        <label htmlFor="endDate" className="block text-sm font-medium text-muted-foreground">Data Fim</label>
+                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="input-style" />
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2 flex justify-end items-end gap-2">
+                        <button onClick={() => handleExport('csv')} className="btn-secondary">Exportar CSV</button>
+                        <button onClick={() => handleExport('pdf')} className="btn-secondary">Exportar PDF</button>
+                        <button onClick={handleClearFilters} className="btn-secondary">Limpar</button>
+                        <button onClick={handleApplyFilters} className="btn-primary">Filtrar</button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-secondary/50">
@@ -201,10 +218,16 @@ function NotificationsLogPage() {
             </tbody>
           </table>
         </div>
-        {/* Paginação */}
+        
+        {totalPages > 1 && (
+            <div className="mt-4 flex justify-between items-center">
+                <button onClick={() => fetchLogs(currentPage - 1, filters)} disabled={currentPage === 1} className="btn-secondary disabled:opacity-50">Anterior</button>
+                <span className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</span>
+                <button onClick={() => fetchLogs(currentPage + 1, filters)} disabled={currentPage === totalPages} className="btn-secondary disabled:opacity-50">Próximo</button>
+            </div>
+        )}
       </div>
 
-      {/* Modal de Detalhes */}
       <Modal title="Detalhes da Notificação" isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         {selectedLog && (
           <div className="space-y-4">

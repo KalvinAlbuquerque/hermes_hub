@@ -1,8 +1,9 @@
-// Arquivo: backend/src/controllers/NotificationLogController.js
+// backend/src/controllers/NotificationLogController.js
 const prisma = require('../database/prisma');
 const { logAction } = require('../services/AuditLogService');
+
 module.exports = {
-  // Busca e filtra os logs de notificação
+  // ... (funções index, show não mudam)
   async index(request, response) {
     const { page = 1, pageSize = 15, templateId, clienteId, status, submittedByUserId, approvedByUserId, subject, startDate, endDate, incidentStatus } = request.query;    const pageNum = parseInt(page, 10);
     const pageSizeNum = parseInt(pageSize, 10);
@@ -50,7 +51,6 @@ module.exports = {
     }
   },
 
-  // Busca os detalhes de um único log de notificação
   async show(request, response) {
     try {
       const { id } = request.params;
@@ -78,7 +78,7 @@ module.exports = {
   async closeIncident(request, response) {
     try {
       const { id } = request.params;
-      const userId = request.user.id; // O analista que está a fechar o caso
+      const userId = request.user.id;
 
       const notificationLog = await prisma.notificationLog.update({
         where: { id },
@@ -87,7 +87,6 @@ module.exports = {
         },
       });
 
-      // Regista a ação no log de auditoria
       await logAction({
         userId: userId,
         action: 'INCIDENT_CLOSED',
@@ -104,9 +103,38 @@ module.exports = {
     }
   },
 
+  // NOVA FUNÇÃO
+  async reopenIncident(request, response) {
+    try {
+      const { id } = request.params;
+      const userId = request.user.id;
+
+      const notificationLog = await prisma.notificationLog.update({
+        where: { id },
+        data: {
+          incidentStatus: 'OPEN',
+        },
+      });
+
+      await logAction({
+        userId: userId,
+        action: 'INCIDENT_REOPENED',
+        details: {
+          notificationId: id,
+          subject: notificationLog.subject,
+        },
+      });
+
+      return response.json({ message: 'Incidente reaberto com sucesso!' });
+    } catch (error) {
+      console.error("Erro ao reabrir incidente:", error);
+      return response.status(500).json({ message: 'Erro ao reabrir o incidente.' });
+    }
+  },
+  
   async getReminders(request, response) {
     try {
-      const { id } = request.params; // ID do NotificationLog
+      const { id } = request.params;
       const reminders = await prisma.reminderLog.findMany({
         where: { notificationLogId: id },
         orderBy: { sentAt: 'asc' },

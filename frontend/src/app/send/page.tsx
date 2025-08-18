@@ -1,25 +1,20 @@
-// Arquivo: frontend/src/app/send/page.tsx
+// frontend/src/app/send/page.tsx
 "use client";
 
-// ... (imports permanecem os mesmos)
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import withAuth from "@/components/withAuth";
 import api from '@/lib/api';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
-import { Upload, X, Paperclip, FileUp } from 'lucide-react';
-
+import { Upload, X, Paperclip } from 'lucide-react';
 
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 
-// ... (interfaces permanecem as mesmas)
 interface Template { id: string; name: string; body: string; subject: string; }
 interface Cliente { id: string; name: string; status: string; }
 interface EmailAccount { id: string; name: string; email: string; status: string; }
 
-
-// Função utilitária para converter o HTML de preview para o HTML final com CIDs
 const convertToCidHtml = (html: string): string => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -29,16 +24,14 @@ const convertToCidHtml = (html: string): string => {
     const cid = img.getAttribute('data-cid');
     if (cid) {
       img.setAttribute('src', `cid:${cid}`);
-      img.removeAttribute('data-cid'); // Limpa o atributo para o HTML final
+      img.removeAttribute('data-cid');
     }
   });
 
   return doc.body.innerHTML;
 };
 
-
 function SendNotificationPage() {
-    // ... (toda a lógica de useState e useEffect permanece a mesma)
     const [step, setStep] = useState(1);
     const [templates, setTemplates] = useState<Template[]>([]);
     const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -86,8 +79,32 @@ function SendNotificationPage() {
             setVariables({});
         }
     }, [selectedTemplateId, templates]);
-
+    
     const handleGoToStep2 = () => {
+        // VALIDAÇÃO ADICIONADA
+        if (!selectedEmailAccountId) {
+            toast.error('Por favor, selecione um remetente.');
+            return;
+        }
+        if (!selectedTemplateId) {
+            toast.error('Por favor, selecione um template.');
+            return;
+        }
+        for (const field of textFields) {
+            if (!variables[field]) {
+                toast.error(`A variável de texto "${field}" é obrigatória.`);
+                return;
+            }
+        }
+        if (recipientMode === 'clientes' && selectedClienteIds.length === 0) {
+            toast.error('Por favor, selecione ao menos um cliente.');
+            return;
+        }
+        if (recipientMode === 'manual' && manualRecipients.trim() === '') {
+            toast.error('Por favor, insira ao menos um destinatário.');
+            return;
+        }
+        
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (!selectedTemplate) return;
 
@@ -101,9 +118,6 @@ function SendNotificationPage() {
             newSubject = newSubject.replace(regex, variables[key] || '');
         }
 
-        newBody = newBody.replace(/\[(Imagem:|Anexar:)[^\]]+\]/g, '');
-        newSubject = newSubject.replace(/\[(Imagem:|Anexar:)[^\]]+\]/g, '');
-
         setEditableBody(newBody);
         setEditableSubject(newSubject);
         setStep(2);
@@ -112,25 +126,32 @@ function SendNotificationPage() {
     const handleClienteSelection = (clienteId: string) => { setSelectedClienteIds(prev => prev.includes(clienteId) ? prev.filter(id => id !== clienteId) : [...prev, clienteId]); };
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) { const newFiles = Array.from(e.target.files); setAttachments(prev => [...prev, ...newFiles]); } };
     const removeAttachment = (fileToRemove: File) => { setAttachments(prev => prev.filter(file => file !== fileToRemove)); };
-
+    
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // ALTERAÇÃO: Converte o HTML para usar CIDs antes de enviar
-        const finalHtmlBody = convertToCidHtml(editableBody);
+        if (editableSubject.trim() === '') {
+            toast.error("O assunto não pode estar vazio.");
+            setStep(2); // Volta para a edição
+            return;
+        }
+         if (editableBody.trim() === '' || editableBody.trim() === '<p></p>') {
+            toast.error("O corpo do e-mail não pode estar vazio.");
+            setStep(2); // Volta para a edição
+            return;
+        }
 
+        const finalHtmlBody = convertToCidHtml(editableBody);
         const formData = new FormData();
         formData.append('templateId', selectedTemplateId);
         formData.append('emailAccountId', selectedEmailAccountId);
         formData.append('finalSubject', editableSubject);
-        formData.append('finalBody', finalHtmlBody); // Envia o HTML processado
+        formData.append('finalBody', finalHtmlBody);
 
         if (recipientMode === 'clientes') {
-            if (selectedClienteIds.length === 0) { toast.error('Selecione ao menos um cliente.'); return; }
             selectedClienteIds.forEach(id => formData.append('clienteIds[]', id));
         } else {
             const recipientsArray = manualRecipients.split(/[\n,;]+/).map(email => email.trim()).filter(Boolean);
-            if (recipientsArray.length === 0) { toast.error('Adicione ao menos um e-mail.'); return; }
             recipientsArray.forEach(email => formData.append('recipients[]', email));
         }
         attachments.forEach(file => { formData.append('attachments', file); });
@@ -144,8 +165,8 @@ function SendNotificationPage() {
         });
     };
 
+    // ... o JSX do formulário não muda
     return (
-        // O JSX do formulário não muda
         <DashboardLayout>
             <form onSubmit={handleSubmit}>
                 <div className="card max-w-4xl mx-auto">
