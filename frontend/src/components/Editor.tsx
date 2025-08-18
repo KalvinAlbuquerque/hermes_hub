@@ -1,4 +1,4 @@
-// Arquivo: frontend/src/components/Editor.tsx
+// frontend/src/components/Editor.tsx
 "use client";
 
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -11,14 +11,12 @@ import Image from '@tiptap/extension-image';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
-// 1. Estende a extensão de Imagem para que o editor "entenda" o nosso atributo data-cid
 const CustomImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
       'data-cid': {
         default: null,
-        // Define como o atributo deve ser renderizado no HTML final
         renderHTML: attributes => {
           if (!attributes['data-cid']) {
             return {};
@@ -33,62 +31,62 @@ const CustomImage = Image.extend({
 });
 
 const MenuBar = ({ editor }: { editor: any }) => {
-    // ... (O MenuBar não muda)
     if (!editor) {
         return null;
-      }
+    }
     
-      const getActiveHeading = () => {
+    const getActiveHeading = () => {
         if (editor.isActive('heading', { level: 1 })) return '1';
         if (editor.isActive('heading', { level: 2 })) return '2';
         if (editor.isActive('heading', { level: 3 })) return '3';
         return '0';
-      };
+    };
     
-      return (
+    return (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-2 border-b border-border bg-secondary/50">
-          <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={`px-3 py-1 rounded font-bold ${editor.isActive('bold') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>B</button>
-          <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={`px-3 py-1 rounded italic ${editor.isActive('italic') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>I</button>
-          <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} className={`px-3 py-1 rounded line-through ${editor.isActive('strike') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>S</button>
-          
-          <div className="h-6 border-l border-border mx-1"></div>
-    
-          <select
-            value={getActiveHeading()}
-            onChange={(e) => {
-              const level = parseInt(e.target.value);
-              if (level === 0) {
-                editor.chain().focus().setParagraph().run();
-              } else {
-                editor.chain().focus().toggleHeading({ level: level as any }).run();
-              }
-            }}
-            className="px-2 py-1 rounded bg-input border border-border text-sm"
-          >
-            <option value="0">Normal</option>
-            <option value="1">Título 1</option>
-            <option value="2">Título 2</option>
-            <option value="3">Título 3</option>
-          </select>
-    
-          <select
-            value={editor.getAttributes('textStyle').fontFamily || ''}
-            onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
-            className="px-2 py-1 rounded bg-input border border-border text-sm"
-          >
-            <option value="">Fonte Padrão</option>
-            <option value="Arial">Arial</option>
-            <option value="Verdana">Verdana</option>
-            <option value="Times New Roman">Times New Roman</option>
-          </select>
-          
-          <div className="h-6 border-l border-border mx-1"></div>
-    
-          <button type="button" onClick={() => editor.chain().focus().setTextAlign('left').run()} className={`px-2 py-1 rounded ${editor.isActive({ textAlign: 'left' }) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>Esq</button>
-          <button type="button" onClick={() => editor.chain().focus().setTextAlign('center').run()} className={`px-2 py-1 rounded ${editor.isActive({ textAlign: 'center' }) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>Cen</button>
-          <button type="button" onClick={() => editor.chain().focus().setTextAlign('right').run()} className={`px-2 py-1 rounded ${editor.isActive({ textAlign: 'right' }) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>Dir</button>
+            <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={`px-3 py-1 rounded font-bold ${editor.isActive('bold') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>B</button>
+            <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={`px-3 py-1 rounded italic ${editor.isActive('italic') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>I</button>
+            <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} className={`px-3 py-1 rounded line-through ${editor.isActive('strike') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>S</button>
+            
+            <div className="h-6 border-l border-border mx-1"></div>
+
+            <select
+                value={getActiveHeading()}
+                onChange={(e) => {
+                    const level = parseInt(e.target.value);
+                    if (level === 0) {
+                        editor.chain().focus().setParagraph().run();
+                    } else {
+                        // A conversão para 'any' é necessária porque o tipo de 'level' é mais específico do que o esperado
+                        editor.chain().focus().toggleHeading({ level: level as any }).run();
+                    }
+                }}
+                className="px-2 py-1 rounded bg-input border border-border text-sm"
+            >
+                <option value="0">Normal</option>
+                <option value="1">Título 1</option>
+                <option value="2">Título 2</option>
+                <option value="3">Título 3</option>
+            </select>
+
+            <select
+                value={editor.getAttributes('textStyle').fontFamily || ''}
+                onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
+                className="px-2 py-1 rounded bg-input border border-border text-sm"
+            >
+                <option value="">Fonte Padrão</option>
+                <option value="Arial">Arial</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Times New Roman">Times New Roman</option>
+            </select>
+            
+            <div className="h-6 border-l border-border mx-1"></div>
+
+            <button type="button" onClick={() => editor.chain().focus().setTextAlign('left').run()} className={`px-2 py-1 rounded ${editor.isActive({ textAlign: 'left' }) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>Esq</button>
+            <button type="button" onClick={() => editor.chain().focus().setTextAlign('center').run()} className={`px-2 py-1 rounded ${editor.isActive({ textAlign: 'center' }) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>Cen</button>
+            <button type="button" onClick={() => editor.chain().focus().setTextAlign('right').run()} className={`px-2 py-1 rounded ${editor.isActive({ textAlign: 'right' }) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>Dir</button>
         </div>
-      );
+    );
 };
 
 interface EditorProps {
@@ -99,11 +97,16 @@ interface EditorProps {
 const TiptapEditor = ({ content, onChange }: EditorProps) => {
     const editor = useEditor({
         extensions: [
-            StarterKit,
+            // CORREÇÃO: Configura o StarterKit para ativar os níveis de título desejados.
+            StarterKit.configure({
+                heading: {
+                    levels: [1, 2, 3],
+                },
+            }),
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             TextStyle,
             FontFamily,
-            CustomImage, // Usa a nossa extensão de imagem personalizada
+            CustomImage,
         ],
         content: content,
         immediatelyRender: false,
@@ -129,9 +132,8 @@ const TiptapEditor = ({ content, onChange }: EditorProps) => {
                                     .then(response => {
                                         const { url, cid } = response.data;
                                         if (url && cid) {
-                                            // CORREÇÃO: Usa insertContent para definir o nó e os seus atributos
                                             editor?.chain().focus().insertContent({
-                                                type: 'image', // o tipo do nó
+                                                type: 'image',
                                                 attrs: {
                                                     src: url,
                                                     'data-cid': cid,
@@ -141,7 +143,7 @@ const TiptapEditor = ({ content, onChange }: EditorProps) => {
                                     });
                                 
                                 toast.promise(uploadPromise, {
-                                    loading: 'Enviando imagem...',
+                                    loading: 'A enviar imagem...',
                                     success: 'Imagem inserida!',
                                     error: 'Falha ao enviar a imagem.',
                                 });
