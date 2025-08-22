@@ -22,6 +22,7 @@ adminRoutes.delete('/profiles/:id', ProfileController.destroy);
 // --- ROTAS PARA USUÁRIOS (USERS) ---
 adminRoutes.get('/users', UserController.index);
 adminRoutes.put('/users/:id', UserController.update);
+adminRoutes.delete('/users/:id', UserController.destroy);
 
 adminRoutes.get('/audit-logs', AuditLogController.index);
 adminRoutes.post('/clientes', ClienteController.create);

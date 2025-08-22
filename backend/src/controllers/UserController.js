@@ -67,6 +67,60 @@ module.exports = {
     }
   },
 
-  // Criar usuário já está em legacyRoutes.js, não precisamos recriar aqui.
-  // Futuramente, podemos mover para cá se quisermos refatorar.
+  async destroy(request, response) {
+    try {
+      const { id } = request.params;
+
+      // Não permite que um usuário se auto-delete
+      if (id === request.user.id) {
+        return response.status(400).json({ message: 'Você не pode excluir a sua própria conta.' });
+      }
+
+      const userToDelete = await prisma.user.findUnique({ where: { id } });
+      if (!userToDelete) {
+        return response.status(404).json({ message: 'Usuário não encontrado.' });
+      }
+
+      // Verifica se o usuário tem registros importantes associados
+      const submittedNotifications = await prisma.notificationLog.count({ where: { submittedByUserId: id } });
+      const createdTemplates = await prisma.template.count({ where: { authorId: id } });
+
+      if (submittedNotifications > 0 || createdTemplates > 0) {
+        return response.status(400).json({ message: 'Não é possível excluir um usuário que já criou templates ou enviou notificações.' });
+      }
+
+      // Verifica os logs de auditoria
+      const auditLogs = await prisma.auditLog.findMany({ where: { userId: id } });
+      
+      // A exclusão só é permitida se não houver logs, ou se houver apenas UM log e a ação for 'USER_CREATE'
+      const canBeHardDeleted = auditLogs.length === 0 || (auditLogs.length === 1 && auditLogs[0].action === 'USER_CREATE');
+
+      if (!canBeHardDeleted) {
+        return response.status(400).json({ message: 'Não é possível excluir este usuário pois ele já realizou outras ações no sistema.' });
+      }
+
+      // Usamos uma transação para garantir que ambas as operações (apagar logs e usuário) funcionem ou falhem juntas
+      await prisma.$transaction(async (tx) => {
+        // 1. Deleta os logs de auditoria associados (que sabemos que são seguros para deletar neste ponto)
+        if (auditLogs.length > 0) {
+          await tx.auditLog.deleteMany({ where: { userId: id } });
+        }
+        
+        // 2. Agora, deleta o usuário
+        await tx.user.delete({ where: { id: id } });
+      });
+
+      // Loga a ação de exclusão (realizada pelo admin logado)
+      await logAction({
+        userId: request.user.id,
+        action: 'USER_DELETE',
+        details: { deletedUserId: id, deletedUserName: userToDelete.name }
+      });
+
+      return response.status(204).send();
+    } catch (error) {
+      console.error("Erro ao deletar usuário:", error);
+      return response.status(500).json({ message: 'Erro interno ao deletar usuário.' });
+    }
+  },
 };

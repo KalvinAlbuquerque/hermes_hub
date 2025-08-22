@@ -53,7 +53,7 @@ function ManageTemplatesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (templateId: string, templateName: string) => {
+   const handleDelete = (templateId: string, templateName: string) => {
     toast((t) => (
       <div>
         <p className="font-semibold">Excluir o template "{templateName}"?</p>
@@ -63,7 +63,12 @@ function ManageTemplatesPage() {
                 toast.dismiss(t.id);
                 toast.promise(
                     api.delete(`/templates/${templateId}`).then(() => fetchTemplates()),
-                    { loading: 'Excluindo...', success: <b>Template excluído!</b>, error: <b>Falha ao excluir.</b> }
+                    { 
+                        loading: 'Excluindo...', 
+                        success: <b>Template excluído!</b>, 
+                        // --- ALTERAÇÃO AQUI ---
+                        error: (err) => err.response?.data?.message || <b>Falha ao excluir.</b> 
+                    }
                 );
             }} className="btn-destructive">Excluir</button>
         </div>

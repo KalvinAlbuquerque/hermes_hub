@@ -63,21 +63,29 @@ module.exports = {
   async destroy(request, response) {
     try {
       const { id } = request.params;
-      // Adicionar verificação para não deixar deletar perfis em uso
+      
       const usersInProfile = await prisma.user.count({ where: { profileId: id } });
       if (usersInProfile > 0) {
         return response.status(400).json({ message: 'Não é possível excluir um perfil que está em uso por um ou mais usuários.' });
       }
+
+      const profileToDelete = await prisma.profile.findUnique({ where: { id } });
+      if (!profileToDelete) {
+        return response.status(404).json({ message: 'Perfil não encontrado.' });
+      }
+
       await prisma.profile.delete({ where: { id } });
 
       await logAction({
         userId: request.user.id,
         action: 'PROFILE_DELETE',
+        // --- CORREÇÃO AQUI ---
         details: { deletedProfileId: id, deletedProfileName: profileToDelete.name }
       });
       
       return response.status(204).send();
     } catch (error) {
+      console.error("Erro ao deletar perfil:", error);
       return response.status(500).json({ message: 'Erro ao deletar perfil.' });
     }
   },

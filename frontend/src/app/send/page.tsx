@@ -16,19 +16,19 @@ interface Cliente { id: string; name: string; status: string; }
 interface EmailAccount { id: string; name: string; email: string; status: string; }
 
 const convertToCidHtml = (html: string): string => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const images = doc.querySelectorAll('img[data-cid]');
-  
-  images.forEach(img => {
-    const cid = img.getAttribute('data-cid');
-    if (cid) {
-      img.setAttribute('src', `cid:${cid}`);
-      img.removeAttribute('data-cid');
-    }
-  });
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const images = doc.querySelectorAll('img[data-cid]');
 
-  return doc.body.innerHTML;
+    images.forEach(img => {
+        const cid = img.getAttribute('data-cid');
+        if (cid) {
+            img.setAttribute('src', `cid:${cid}`);
+            img.removeAttribute('data-cid');
+        }
+    });
+
+    return doc.body.innerHTML;
 };
 
 function SendNotificationPage() {
@@ -71,7 +71,7 @@ function SendNotificationPage() {
             const contentToScan = selectedTemplate.subject + ' ' + selectedTemplate.body;
             const textFieldMatches = contentToScan.match(/\[(?!Imagem:|Anexar:)(.*?)\]/g)?.map(f => f.substring(1, f.length - 1)) || [];
             const uniqueTextFields = [...new Set(textFieldMatches)];
-            
+
             setTextFields(uniqueTextFields);
             setVariables(uniqueTextFields.reduce((acc, field) => ({ ...acc, [field]: '' }), {}));
         } else {
@@ -79,8 +79,9 @@ function SendNotificationPage() {
             setVariables({});
         }
     }, [selectedTemplateId, templates]);
-    
+
     const handleGoToStep2 = () => {
+        // --- INÍCIO DA MODIFICAÇÃO ---
         // VALIDAÇÃO ADICIONADA
         if (!selectedEmailAccountId) {
             toast.error('Por favor, selecione um remetente.');
@@ -90,8 +91,9 @@ function SendNotificationPage() {
             toast.error('Por favor, selecione um template.');
             return;
         }
+        // Verifica se todas as variáveis de texto obrigatórias foram preenchidas
         for (const field of textFields) {
-            if (!variables[field]) {
+            if (!variables[field] || variables[field].trim() === '') {
                 toast.error(`A variável de texto "${field}" é obrigatória.`);
                 return;
             }
@@ -104,7 +106,8 @@ function SendNotificationPage() {
             toast.error('Por favor, insira ao menos um destinatário.');
             return;
         }
-        
+        // --- FIM DA MODIFICAÇÃO ---
+
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (!selectedTemplate) return;
 
@@ -126,16 +129,16 @@ function SendNotificationPage() {
     const handleClienteSelection = (clienteId: string) => { setSelectedClienteIds(prev => prev.includes(clienteId) ? prev.filter(id => id !== clienteId) : [...prev, clienteId]); };
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) { const newFiles = Array.from(e.target.files); setAttachments(prev => [...prev, ...newFiles]); } };
     const removeAttachment = (fileToRemove: File) => { setAttachments(prev => prev.filter(file => file !== fileToRemove)); };
-    
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (editableSubject.trim() === '') {
             toast.error("O assunto não pode estar vazio.");
             setStep(2); // Volta para a edição
             return;
         }
-         if (editableBody.trim() === '' || editableBody.trim() === '<p></p>') {
+        if (editableBody.trim() === '' || editableBody.trim() === '<p></p>') {
             toast.error("O corpo do e-mail não pode estar vazio.");
             setStep(2); // Volta para a edição
             return;
@@ -155,9 +158,9 @@ function SendNotificationPage() {
             recipientsArray.forEach(email => formData.append('recipients[]', email));
         }
         attachments.forEach(file => { formData.append('attachments', file); });
-        
+
         const promise = api.post('/notifications/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' }, });
-        
+
         toast.promise(promise, {
             loading: 'A submeter notificação...',
             success: (res) => { setStep(1); setSelectedTemplateId(''); setAttachments([]); return <b>{res.data.message}</b>; },
@@ -172,7 +175,7 @@ function SendNotificationPage() {
                 <div className="card max-w-4xl mx-auto">
                     {/* PASSO 1 */}
                     <div className={step === 1 ? 'block' : 'hidden'}>
-                         <h2 className="text-xl font-semibold text-foreground">Passo 1: Configuração e Destinatários</h2>
+                        <h2 className="text-xl font-semibold text-foreground">Passo 1: Configuração e Destinatários</h2>
                         <p className="text-sm text-muted-foreground mt-1">Defina o remetente, conteúdo, anexos e para quem enviar.</p>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 mt-6">
@@ -186,7 +189,7 @@ function SendNotificationPage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-muted-foreground">Template</label>
-                                    <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value) } className="input-style" required>
+                                    <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)} className="input-style" required>
                                         <option value="">-- Escolha um template --</option>
                                         {templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
                                     </select>

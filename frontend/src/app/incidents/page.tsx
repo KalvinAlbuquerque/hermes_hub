@@ -34,7 +34,7 @@ function ManageIncidentsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
     const [modalContent, setModalContent] = useState<'history' | 'close' | 'reopen' | null>(null);
-
+    const [reminderHistory, setReminderHistory] = useState<ReminderLog[]>([]);
     const [filters, setFilters] = useState({
         incidentStatus: 'OPEN',
         submittedByUserId: '',
@@ -78,13 +78,24 @@ function ManageIncidentsPage() {
     const handleApplyFilters = () => {
         fetchIncidents(filters);
     };
-    
-    const openModal = (incident: Incident, type: 'close' | 'reopen') => {
+
+    const openModal = async (incident: Incident, type: 'close' | 'reopen' | 'history') => {
         setSelectedIncident(incident);
         setModalContent(type);
+
+        // Se for para ver o histórico, busca os dados
+        if (type === 'history') {
+            try {
+                const response = await api.get(`/logs/notifications/${incident.id}/reminders`);
+                setReminderHistory(response.data);
+            } catch (err) {
+                toast.error('Falha ao carregar o histórico de lembretes.');
+                setReminderHistory([]); // Limpa o histórico em caso de erro
+            }
+        }
         setIsModalOpen(true);
     }
-    
+
     const handleConfirmClose = () => {
         if (!selectedIncident) return;
         toast.promise(
@@ -169,6 +180,10 @@ function ManageIncidentsPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right space-x-2">
+                                            <button onClick={() => openModal(incident, 'history')} className="btn-secondary text-xs inline-flex items-center">
+                                                <History className="h-3.5 w-3.5 mr-1.5" />
+                                                Histórico
+                                            </button>
                                             {incident.incidentStatus === 'OPEN' ? (
                                                 <button onClick={() => openModal(incident, 'close')} className="btn-secondary text-xs inline-flex items-center">
                                                     <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
@@ -195,33 +210,76 @@ function ManageIncidentsPage() {
                 </div>
             </div>
 
-            <Modal title="Confirmação" isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+            <Modal title={
+                modalContent === 'history' ? 'Histórico de Lembretes' : 'Confirmação'
+            } isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 {selectedIncident && (
-                    <div className="text-center">
-                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-                           <AlertTriangle className="h-6 w-6 text-yellow-600" aria-hidden="true" />
-                        </div>
-                        <h3 className="text-lg leading-6 font-medium text-foreground">
-                            {modalContent === 'close' ? 'Fechar Incidente' : 'Reabrir Incidente'}
-                        </h3>
-                        <div className="mt-2 px-7 py-3">
-                            <p className="text-sm text-muted-foreground">
-                                {modalContent === 'close' 
-                                 ? `Tem a certeza que deseja marcar o incidente "${selectedIncident.subject}" como fechado?`
-                                 : `Tem a certeza que deseja reabrir o incidente "${selectedIncident.subject}"?`
-                                }
-                            </p>
-                        </div>
-                        <div className="items-center px-4 py-3 gap-4 flex justify-center">
-                            <button onClick={() => setIsModalOpen(false)} className="btn-secondary w-28">
-                                Cancelar
-                            </button>
-                            <button onClick={modalContent === 'close' ? handleConfirmClose : handleConfirmReopen}
-                                    className={`${modalContent === 'close' ? 'btn-primary bg-success hover:bg-success/90' : 'btn-primary'} w-28`}>
-                                Confirmar
-                            </button>
-                        </div>
-                    </div>
+                    <>
+                        {(modalContent === 'close' || modalContent === 'reopen') && (
+                            <div className="text-center">
+                                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                                    <AlertTriangle className="h-6 w-6 text-yellow-600" aria-hidden="true" />
+                                </div>
+                                <h3 className="text-lg leading-6 font-medium text-foreground">
+                                    {modalContent === 'close' ? 'Fechar Incidente' : 'Reabrir Incidente'}
+                                </h3>
+                                <div className="mt-2 px-7 py-3">
+                                    <p className="text-sm text-muted-foreground">
+                                        {modalContent === 'close'
+                                            ? `Tem a certeza que deseja marcar o incidente "${selectedIncident.subject}" como fechado?`
+                                            : `Tem a certeza que deseja reabrir o incidente "${selectedIncident.subject}"?`
+                                        }
+                                    </p>
+                                </div>
+                                <div className="items-center px-4 py-3 gap-4 flex justify-center">
+                                    <button onClick={() => setIsModalOpen(false)} className="btn-secondary w-28">
+                                        Cancelar
+                                    </button>
+                                    <button onClick={modalContent === 'close' ? handleConfirmClose : handleConfirmReopen}
+                                        className={`${modalContent === 'close' ? 'btn-primary bg-success hover:bg-success/90' : 'btn-primary'} w-28`}>
+                                        Confirmar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {modalContent === 'history' && (
+                            <div>
+                                <h3 className="text-lg leading-6 font-medium text-foreground mb-4">
+                                    Incidente: "{selectedIncident.subject}"
+                                </h3>
+                                {reminderHistory.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        <li className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
+                                            <div className="flex-shrink-0 bg-blue-500/20 text-blue-400 font-bold h-8 w-8 rounded-full flex items-center justify-center text-sm">
+                                                0
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground">Incidente aberto</p>
+                                                <p className="text-xs text-muted-foreground">{new Date(selectedIncident.createdAt).toLocaleString('pt-BR')}</p>
+                                            </div>
+                                        </li>
+                                        {reminderHistory.map((reminder, index) => (
+                                            <li key={reminder.id} className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
+                                                <div className="flex-shrink-0 bg-primary/20 text-primary font-bold h-8 w-8 rounded-full flex items-center justify-center text-sm">
+                                                    {index + 1}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">Lembrete enviado</p>
+                                                    <p className="text-xs text-muted-foreground">{new Date(reminder.sentAt).toLocaleString('pt-BR')}</p>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-center text-muted-foreground py-4">Nenhum lembrete foi enviado para este incidente ainda.</p>
+                                )}
+                                <div className="flex justify-end mt-6">
+                                    <button onClick={() => setIsModalOpen(false)} className="btn-secondary">Fechar</button>
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </Modal>
         </DashboardLayout>

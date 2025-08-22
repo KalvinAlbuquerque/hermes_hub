@@ -69,9 +69,15 @@ function ManageUsersPage() {
           <button onClick={() => toast.dismiss(t.id)} className="btn-secondary">Cancelar</button>
           <button onClick={() => {
             toast.dismiss(t.id);
-            toast.error(`A exclusão de utilizadores ainda não foi implementada.`);
-            // Lógica de exclusão viria aqui no futuro
-            // toast.promise(api.delete(`/users/${userId}`).then(() => fetchData()), { ... });
+            // --- LÓGICA DE EXCLUSÃO ATUALIZADA ---
+            toast.promise(
+              api.delete(`/users/${userId}`).then(() => fetchData()),
+              {
+                loading: 'Excluindo utilizador...',
+                success: <b>Utilizador excluído com sucesso!</b>,
+                error: (err) => err.response?.data?.message || 'Falha ao excluir.',
+              }
+            );
           }} className="btn-destructive">Excluir</button>
         </div>
       </div>
