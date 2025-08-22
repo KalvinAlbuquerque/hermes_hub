@@ -1,11 +1,12 @@
 // backend/src/controllers/NotificationLogController.js
 const prisma = require('../database/prisma');
 const { logAction } = require('../services/AuditLogService');
-
+const { calculateNextReminder } = require('../services/CronService');
+const { sendMail } = require('../services/EmailService');
 module.exports = {
   // ... (funções index, show não mudam)
   async index(request, response) {
-    const { page = 1, pageSize = 15, templateId, clienteId, status, submittedByUserId, approvedByUserId, subject, startDate, endDate, incidentStatus } = request.query;    const pageNum = parseInt(page, 10);
+    const { page = 1, pageSize = 15, templateId, clienteId, status, submittedByUserId, approvedByUserId, subject, startDate, endDate, incidentStatus } = request.query; const pageNum = parseInt(page, 10);
     const pageSizeNum = parseInt(pageSize, 10);
 
     const where = {};
@@ -50,6 +51,58 @@ module.exports = {
       return response.status(500).json({ message: 'Erro ao listar logs de notificação.' });
     }
   },
+
+  async sendManualReminder(request, response) {
+    try {
+      const { id } = request.params;
+      const userId = request.user.id;
+
+      const incident = await prisma.notificationLog.findUnique({
+        where: { id },
+        include: { template: { include: { category: true } } },
+      });
+
+      if (!incident) {
+        return response.status(404).json({ message: 'Incidente não encontrado.' });
+      }
+      if (!incident.template?.category) {
+        return response.status(400).json({ message: 'Incidente não possui uma categoria de SLA para enviar lembretes.' });
+      }
+
+      const category = incident.template.category;
+      const protocol = `HERMES-${incident.id.substring(0, 8).toUpperCase()}`;
+
+      // Envia o e-mail
+      await sendMail({
+        to: incident.recipients,
+        subject: `[LEMBRETE] Pendência em Aberto: ${incident.subject}`,
+        html: category.reminderTemplateBody.replace(/\[PROTOCOLO\]/g, protocol),
+        accountId: incident.emailAccountId,
+      });
+
+      // Recalcula o próximo lembrete para evitar envios duplicados
+      const nextReminderDate = calculateNextReminder(category);
+      await prisma.notificationLog.update({
+        where: { id: incident.id },
+        data: { nextReminderAt: nextReminderDate },
+      });
+
+      // Registra no histórico
+      await prisma.reminderLog.create({ data: { notificationLogId: incident.id } });
+
+      await logAction({
+        userId: userId,
+        action: 'MANUAL_REMINDER_SENT',
+        details: { notificationId: id, subject: incident.subject },
+      });
+
+      return response.json({ message: 'Lembrete enviado com sucesso!' });
+    } catch (error) {
+      console.error("Erro ao enviar lembrete manual:", error);
+      return response.status(500).json({ message: 'Erro ao enviar lembrete manual.' });
+    }
+  },
+
 
   async show(request, response) {
     try {
@@ -131,7 +184,7 @@ module.exports = {
       return response.status(500).json({ message: 'Erro ao reabrir o incidente.' });
     }
   },
-  
+
   async getReminders(request, response) {
     try {
       const { id } = request.params;
@@ -145,7 +198,7 @@ module.exports = {
     }
   },
 
-   async pauseIncident(request, response) {
+  async pauseIncident(request, response) {
     try {
       const { id } = request.params;
       const userId = request.user.id;

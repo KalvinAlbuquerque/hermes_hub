@@ -4,13 +4,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { LayoutDashboard, Send, Users, Shield, FileText, Settings, CheckSquare, History, ChevronDown, Monitor, Mail, Building, ShieldAlert, Activity } from 'lucide-react';
+import { LayoutDashboard, Send, Users, Shield, FileText, Settings, CheckSquare, History, ChevronDown, Monitor, Mail, Building, ShieldAlert, 
+  Activity, Server } from 'lucide-react';
 
 // A estrutura de dados permanece a mesma
 const navLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Enviar Notificação', href: '/send', icon: Send },
-  { name: 'Gerenciar Incidentes', href: '/incidents', icon: Activity },  {
+  { name: 'Gerenciar Incidentes', href: '/incidents', icon: Activity }, {
     name: 'Administração',
     icon: Settings,
     subLinks: [
@@ -19,6 +20,7 @@ const navLinks = [
       { name: 'Gerenciar Usuários', href: '/admin/users', icon: Users },
       { name: 'Gerenciar Perfis', href: '/admin/profiles', icon: Shield },
       { name: 'Gerenciar Clientes', href: '/admin/clientes', icon: Users },
+      { name: 'Gerenciar Categorias', href: '/admin/categories', icon: Server },
       { name: 'Gerenciar Contas de E-mail', href: '/admin/email-accounts', icon: Mail },
     ]
   },

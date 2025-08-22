@@ -4,18 +4,19 @@ const { logAction } = require('../services/AuditLogService');
 
 module.exports = {
   // Criar um template
-  async create(request, response) {
+   async create(request, response) {
     try {
-      const { name, subject, body } = request.body;
-      const authorId = request.user.id; // Pegamos o ID do usuário logado (do middleware)
+      // 1. Adicionar categoryId à desestruturação
+      const { name, subject, body, categoryId } = request.body;
+      const authorId = request.user.id; 
 
-      // Validação para garantir que o authorId existe
       if (!authorId) {
         return response.status(401).json({ message: 'Não foi possível identificar o autor. Sessão inválida.' });
       }
 
       const newTemplate = await prisma.template.create({
-        data: { name, subject, body, authorId },
+        // 2. Adicionar categoryId aos dados
+        data: { name, subject, body, authorId, categoryId },
       });
 
        await logAction({
@@ -26,11 +27,9 @@ module.exports = {
 
       return response.status(201).json(newTemplate);
     } catch (error) {
-      // CORREÇÃO: Adiciona log detalhado no servidor para facilitar a depuração.
       console.error("Falha ao criar template:", error); 
       return response.status(500).json({ 
           message: 'Erro interno ao criar o template.',
-          // Envia uma mensagem mais detalhada do erro para o frontend em ambiente de desenvolvimento
           errorDetails: process.env.NODE_ENV !== 'production' ? error.message : undefined
       });
     }
@@ -67,11 +66,13 @@ module.exports = {
   async update(request, response) {
     try {
       const { id } = request.params;
-      const { name, subject, body } = request.body;
+      // 1. Adicionar categoryId à desestruturação
+      const { name, subject, body, categoryId } = request.body;
 
       const updatedTemplate = await prisma.template.update({
         where: { id },
-        data: { name, subject, body },
+        // 2. Adicionar categoryId aos dados
+        data: { name, subject, body, categoryId },
       });
 
         await logAction({

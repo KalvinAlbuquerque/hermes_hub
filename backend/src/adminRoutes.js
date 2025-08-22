@@ -9,7 +9,7 @@ const ReportController = require('./controllers/ReportController');
 // A linha do SettingsController foi removida daqui
 const EmailAccountController = require('./controllers/EmailAccountController');
 const CompanyController = require('./controllers/CompanyController'); 
-
+const CategoryController = require('./controllers/CategoryController');
 const adminRoutes = Router();
 adminRoutes.use(authMiddleware);
 
@@ -45,5 +45,11 @@ adminRoutes.post('/email-accounts/test-connection', EmailAccountController.testC
 // --- ROTAS PARA GESTÃO DA EMPRESA ---
 adminRoutes.get('/company/settings', CompanyController.getSettings);
 adminRoutes.post('/company/logo', CompanyController.uploadLogo); 
+
+// Rotas para Categorias
+adminRoutes.post('/categories', CategoryController.create);
+adminRoutes.get('/categories', CategoryController.index);
+adminRoutes.put('/categories/:id', CategoryController.update);
+adminRoutes.delete('/categories/:id', CategoryController.destroy);
 
 module.exports = adminRoutes;

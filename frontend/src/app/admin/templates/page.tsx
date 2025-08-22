@@ -17,43 +17,54 @@ interface Template {
   name: string;
   subject: string;
   body: string;
+  categoryId?: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
 }
 
 function ManageTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', subject: '', body: '' });
+  const [formData, setFormData] = useState({ name: '', subject: '', body: '', categoryId: '' });
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
-  const fetchTemplates = async () => {
+  const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/templates?pageSize=100');
-      setTemplates(response.data.data);
+      const [templatesRes, categoriesRes] = await Promise.all([
+        api.get('/templates?pageSize=100'),
+        api.get('/categories')
+      ]);
+      setTemplates(templatesRes.data.data);
+      setCategories(categoriesRes.data);
     } catch (err) {
-      toast.error('Falha ao carregar os templates.');
+      toast.error('Falha ao carregar dados da página.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTemplates();
+    fetchInitialData();
   }, []);
 
   const handleOpenModal = (template: Template | null) => {
     if (template) {
       setEditingTemplateId(template.id);
-      setFormData({ name: template.name, subject: template.subject, body: template.body });
+      setFormData({ name: template.name, subject: template.subject, body: template.body, categoryId: template.categoryId || '' });
     } else {
       setEditingTemplateId(null);
-      setFormData({ name: '', subject: '', body: '' });
+      setFormData({ name: '', subject: '', body: '', categoryId: '' });
     }
     setIsModalOpen(true);
   };
 
-   const handleDelete = (templateId: string, templateName: string) => {
+  const handleDelete = (templateId: string, templateName: string) => {
     toast((t) => (
       <div>
         <p className="font-semibold">Excluir o template "{templateName}"?</p>
@@ -62,11 +73,10 @@ function ManageTemplatesPage() {
             <button onClick={() => {
                 toast.dismiss(t.id);
                 toast.promise(
-                    api.delete(`/templates/${templateId}`).then(() => fetchTemplates()),
+                    api.delete(`/templates/${templateId}`).then(() => fetchInitialData()),
                     { 
                         loading: 'Excluindo...', 
                         success: <b>Template excluído!</b>, 
-                        // --- ALTERAÇÃO AQUI ---
                         error: (err) => err.response?.data?.message || <b>Falha ao excluir.</b> 
                     }
                 );
@@ -85,7 +95,7 @@ function ManageTemplatesPage() {
     toast.promise(
       promise.then(() => {
         setIsModalOpen(false);
-        fetchTemplates();
+        fetchInitialData();
       }),
       { loading: 'Salvando template...', success: <b>Template salvo!</b>, error: <b>Falha ao salvar.</b> }
     );
@@ -133,6 +143,15 @@ function ManageTemplatesPage() {
                 <div>
                     <label className="block text-sm font-medium text-muted-foreground">Nome do Template</label>
                     <input type="text" value={formData.name} onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))} className="input-style" required />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Categoria de SLA</label>
+                    <select value={formData.categoryId} onChange={(e) => setFormData(prev => ({...prev, categoryId: e.target.value}))} className="input-style">
+                        <option value="">-- Nenhuma --</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                    </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-muted-foreground">Assunto do E-mail</label>

@@ -6,7 +6,7 @@ import withAuth from "@/components/withAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle } from 'lucide-react';
+import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle, Send } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 interface Incident {
@@ -141,6 +141,17 @@ function ManageIncidentsPage() {
         );
     };
 
+    const handleSendReminderNow = (incidentId: string, incidentSubject: string) => {
+        toast.promise(
+            api.post(`/logs/notifications/${incidentId}/send-reminder`),
+            {
+                loading: `Enviando lembrete para "${incidentSubject}"...`,
+                success: <b>Lembrete enviado com sucesso!</b>,
+                error: (err) => err.response?.data?.message || <b>Falha ao enviar lembrete.</b>,
+            }
+        );
+    };
+
     return (
         <DashboardLayout>
             <div className="card">
@@ -192,8 +203,8 @@ function ManageIncidentsPage() {
                                         <td className="px-6 py-4 text-sm text-muted-foreground">{incident.submittedByUser.name}</td>
                                         <td className="px-6 py-4 text-sm">
                                             <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${incident.incidentStatus === 'OPEN' ? 'bg-yellow-500/20 text-yellow-500' :
-                                                    incident.incidentStatus === 'PAUSED' ? 'bg-blue-500/20 text-blue-400' :
-                                                        'bg-success/20 text-success'
+                                                incident.incidentStatus === 'PAUSED' ? 'bg-blue-500/20 text-blue-400' :
+                                                    'bg-success/20 text-success'
                                                 }`}>
                                                 {incident.incidentStatus === 'OPEN' ? 'Aberto' :
                                                     incident.incidentStatus === 'PAUSED' ? 'Pausado' :
@@ -209,6 +220,10 @@ function ManageIncidentsPage() {
 
                                             {incident.incidentStatus === 'OPEN' && (
                                                 <>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleSendReminderNow(incident.id, incident.subject); }} className="btn-secondary text-xs inline-flex items-center">
+                                                        <Send className="h-3.5 w-3.5 mr-1.5" />
+                                                        Lembrete
+                                                    </button>
                                                     <button onClick={() => openModal(incident, 'pause')} className="btn-secondary text-xs inline-flex items-center">
                                                         <PauseCircle className="h-3.5 w-3.5 mr-1.5" />
                                                         Pausar

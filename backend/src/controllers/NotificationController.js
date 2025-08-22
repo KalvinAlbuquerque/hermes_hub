@@ -3,7 +3,7 @@ const prisma = require('../database/prisma');
 const { sendMail } = require('../services/EmailService');
 const { logAction } = require('../services/AuditLogService');
 const path = require('path');
-
+const { calculateNextReminder } = require('../services/CronService');
 module.exports = {
   // ... (a função index não muda)
   async index(request, response) {
@@ -17,7 +17,7 @@ module.exports = {
     return response.json(notifications);
   },
 
-  async submit(request, response) {
+   async submit(request, response) {
     const { templateId, clienteIds, recipients, emailAccountId, finalSubject, finalBody } = request.body;
     const senderId = request.user.id;
 
@@ -29,6 +29,20 @@ module.exports = {
     }
     if (!finalSubject || !finalBody) {
       return response.status(400).json({ message: 'O assunto e o corpo do e-mail não podem estar vazios.' });
+    }
+
+    const templateWithCategory = await prisma.template.findUnique({
+      where: { id: templateId },
+      include: { category: true },
+    });
+
+    if (!templateWithCategory) {
+      return response.status(404).json({ message: 'Template não encontrado.' });
+    }
+
+    let firstReminderDate = null;
+    if (templateWithCategory.category) {
+      firstReminderDate = calculateNextReminder(templateWithCategory.category);
     }
 
     let finalRecipients = [];
@@ -70,6 +84,7 @@ module.exports = {
       submittedByUserId: senderId,
       emailAccountId: emailAccountId,
       attachments: attachmentsForDb,
+      nextReminderAt: firstReminderDate,
       ...clienteConnectData,
     };
 
@@ -79,7 +94,12 @@ module.exports = {
           data: { ...notificationData, status: 'SENT', approvedByUserId: senderId, approvedAt: new Date(), sentAt: new Date() },
         });
 
-        // CORREÇÃO: Usa module.exports para chamar a função
+        // Gera e salva o protocolo
+        await prisma.notificationLog.update({
+            where: { id: newNotification.id },
+            data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+        });
+
         await module.exports.approveAndSend(newNotification);
 
         await logAction({ userId: senderId, action: 'NOTIFICATION_AUTO_APPROVED', details: { notificationId: newNotification.id, subject: finalSubject } });
@@ -92,6 +112,13 @@ module.exports = {
       const newNotification = await prisma.notificationLog.create({
         data: { ...notificationData, status: 'PENDING' },
       });
+
+      // Gera e salva o protocolo
+      await prisma.notificationLog.update({
+          where: { id: newNotification.id },
+          data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+      });
+
       await logAction({ userId: senderId, action: 'NOTIFICATION_SUBMITTED', details: { notificationId: newNotification.id, subject: finalSubject } });
       
       const approvers = await prisma.user.findMany({ where: { profile: { permissions: { path: ['canApproveNotifications'], equals: true } } } });
@@ -108,7 +135,6 @@ module.exports = {
     }
   },
 
-  // ... (a função reject não muda)
   async reject(request, response) {
     const { id } = request.params;
     const { reason } = request.body;
@@ -157,7 +183,6 @@ module.exports = {
     }
   },
 
-  // ... (a função show não muda)
   async show(request, response) {
     try {
       const { id } = request.params;
@@ -180,6 +205,7 @@ module.exports = {
   },
   
   async approveAndSend(notification) {
+    // 1. Prepara os anexos que foram enviados via upload
     const finalAttachments = Array.isArray(notification.attachments)
       ? notification.attachments.map(att => ({
           filename: att.filename,
@@ -187,31 +213,43 @@ module.exports = {
         }))
       : [];
     
+    // 2. Procura por imagens coladas (com 'cid:') no corpo do e-mail
     const inlineImages = notification.body.match(/src="cid:[^"]+"/g) || [];
     
     inlineImages.forEach(imgTag => {
       const cidWithExtension = imgTag.substring(9, imgTag.length - 1);
-      const cid = path.parse(cidWithExtension).name; // Extrai o nome do ficheiro sem extensão
+      const cid = path.parse(cidWithExtension).name;
       
-      // Encontra o ficheiro correspondente no sistema de ficheiros
       const attachmentPath = path.resolve(__dirname, '..', '..', 'public', 'attachments');
-      const files = require('fs').readdirSync(attachmentPath);
-      const filename = files.find(f => f.startsWith(cid));
+      try {
+        const files = require('fs').readdirSync(attachmentPath);
+        const filename = files.find(f => f.startsWith(cid));
 
-      if (filename) {
-          finalAttachments.push({
-            filename: filename,
-            path: path.resolve(attachmentPath, filename),
-            cid: cid 
-          });
+        if (filename) {
+            finalAttachments.push({
+              filename: filename,
+              path: path.resolve(attachmentPath, filename),
+              cid: cid 
+            });
+        }
+      } catch (error) {
+          console.error(`[approveAndSend] Erro ao ler diretório de anexos para o CID ${cid}:`, error);
       }
     });
 
+    // 3. Garante que o protocolo existe e o formata
+    const protocol = notification.protocol || `HERMES-${notification.id.substring(0, 8).toUpperCase()}`;
+    
+    // 4. Substitui o placeholder no corpo e no assunto do e-mail
+    const finalHtmlBody = notification.body.replace(/\[PROTOCOLO\]/g, protocol);
+    const finalSubject = notification.subject.replace(/\[PROTOCOLO\]/g, protocol);
+
+    // 5. Envia o e-mail para cada destinatário
     for (const recipient of notification.recipients) {
       await sendMail({
         to: recipient,
-        subject: notification.subject,
-        html: notification.body,
+        subject: finalSubject,      // Usa o assunto com o protocolo
+        html: finalHtmlBody,        // Usa o corpo com o protocolo
         accountId: notification.emailAccountId,
         attachments: finalAttachments
       });

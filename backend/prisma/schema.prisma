@@ -56,6 +56,10 @@ model Template {
   authorId         String
   author           User              @relation(fields: [authorId], references: [id])
   notificationLogs NotificationLog[]
+
+  categoryId       String?
+  category         Category?         @relation(fields: [categoryId], references: [id])
+
   @@map("templates")
 }
 
@@ -103,11 +107,24 @@ model NotificationLog {
   approvedByUser    User?         @relation("ApprovedByUser", fields: [approvedByUserId], references: [id])
   approvedAt        DateTime?
   clientes          Cliente[]
-  
+  nextReminderAt    DateTime?     // Armazena a data/hora exata do próximo lembrete
+  protocol          String?       @unique // Adicionamos como opcional e único
   // LINHA ADICIONADA PARA CORRIGIR O ERRO
   reminders         ReminderLog[]
 
   @@map("notification_logs")
+}
+
+model Category {
+  id                    String   @id @default(uuid())
+  name                  String   @unique
+  reminderMode          String   // 'INTERVAL' ou 'SPECIFIC_TIME'
+  reminderIntervalHours Int?     // Ex: 4 (para a cada 4 horas)
+  reminderSpecificTime  String?  // Ex: "09:00"
+  reminderTemplateBody  String   @db.Text // Corpo do e-mail do lembrete
+  templates             Template[]
+  reminderSubject       String   // Assunto do e-mail de lembrete
+  @@map("categories")
 }
 
 model AuditLog {
@@ -121,7 +138,6 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-// NOVO MODELO (já estava correto, mas mantido aqui para contexto)
 model ReminderLog {
   id                String    @id @default(uuid())
   sentAt            DateTime  @default(now())

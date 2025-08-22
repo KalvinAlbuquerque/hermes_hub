@@ -18,4 +18,5 @@ logRoutes.post('/logs/notifications/:id/close', NotificationLogController.closeI
 logRoutes.get('/logs/notifications/:id/reminders', NotificationLogController.getReminders);
 logRoutes.post('/logs/notifications/:id/pause', NotificationLogController.pauseIncident);
 logRoutes.post('/logs/notifications/:id/reopen', NotificationLogController.reopenIncident); 
+logRoutes.post('/logs/notifications/:id/send-reminder', NotificationLogController.sendManualReminder);
 module.exports = logRoutes;
