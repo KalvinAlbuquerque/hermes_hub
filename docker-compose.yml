@@ -26,6 +26,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY} 
       - BACKEND_URL=${BACKEND_URL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     depends_on:
       - database
 

@@ -10,20 +10,23 @@ import toast from 'react-hot-toast';
 import { Trash, Clock, Repeat } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-// Importa o editor de forma dinâmica para evitar problemas de SSR
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 
+// 1. Adicionar reminderSubject à interface
 interface Category {
   id: string;
   name: string;
+  reminderSubject: string; 
   reminderMode: 'INTERVAL' | 'SPECIFIC_TIME';
   reminderIntervalHours?: number;
   reminderSpecificTime?: string;
   reminderTemplateBody: string;
 }
 
+// 2. Adicionar reminderSubject à interface do formulário
 interface CategoryFormData {
   name: string;
+  reminderSubject: string;
   reminderMode: 'INTERVAL' | 'SPECIFIC_TIME';
   reminderIntervalHours?: number | string;
   reminderSpecificTime?: string;
@@ -34,8 +37,10 @@ function ManageCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // 3. Adicionar valor inicial para reminderSubject no estado do formulário
   const [formData, setFormData] = useState<CategoryFormData>({
     name: '',
+    reminderSubject: '[LEMBRETE] Pendência em Aberto: [ASSUNTO]',
     reminderMode: 'INTERVAL',
     reminderIntervalHours: 24,
     reminderSpecificTime: '09:00',
@@ -62,8 +67,10 @@ function ManageCategoriesPage() {
   const handleOpenModal = (category: Category | null) => {
     if (category) {
       setEditingCategoryId(category.id);
+      // 4. Carregar o reminderSubject ao editar
       setFormData({
         name: category.name,
+        reminderSubject: category.reminderSubject,
         reminderMode: category.reminderMode,
         reminderIntervalHours: category.reminderIntervalHours || '',
         reminderSpecificTime: category.reminderSpecificTime || '',
@@ -73,10 +80,10 @@ function ManageCategoriesPage() {
       setEditingCategoryId(null);
       setFormData({
         name: '',
+        reminderSubject: '[LEMBRETE] Pendência em Aberto: [ASSUNTO]',
         reminderMode: 'INTERVAL',
         reminderIntervalHours: 24,
         reminderSpecificTime: '09:00',
-        // --- COLOQUE O CÓDIGO AQUI ---
         reminderTemplateBody: '<div style="font-family: sans-serif; text-align: center; padding: 40px;"><h1 style="color: #d93025; font-size: 20px; border: 2px solid #d93025; padding: 15px; border-radius: 8px; text-transform: uppercase;">---- Notificação [PROTOCOLO] ----</h1><p style="margin-top: 25px; color: #5f6368; font-size: 16px;">Este é um lembrete automático sobre uma pendência que continua em aberto.</p></div>'
       });
     }
@@ -169,6 +176,13 @@ function ManageCategoriesPage() {
             <div>
               <label className="block text-sm font-medium text-muted-foreground">Nome da Categoria</label>
               <input type="text" value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} className="input-style" required />
+            </div>
+
+            {/* 5. ADICIONAR O CAMPO DE INPUT NO FORMULÁRIO */}
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground">Assunto do Lembrete</label>
+              <p className="text-xs text-muted-foreground mb-2">Use <strong>[ASSUNTO]</strong> e <strong>[PROTOCOLO]</strong> como variáveis.</p>
+              <input type="text" value={formData.reminderSubject} onChange={(e) => setFormData(p => ({ ...p, reminderSubject: e.target.value }))} className="input-style" required />
             </div>
 
             <div>
