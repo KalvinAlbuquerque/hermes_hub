@@ -144,4 +144,33 @@ module.exports = {
       return response.status(500).json({ message: 'Erro ao buscar histórico de lembretes.' });
     }
   },
+
+   async pauseIncident(request, response) {
+    try {
+      const { id } = request.params;
+      const userId = request.user.id;
+
+      const notificationLog = await prisma.notificationLog.update({
+        where: { id },
+        data: {
+          incidentStatus: 'PAUSED',
+        },
+      });
+
+      await logAction({
+        userId: userId,
+        action: 'INCIDENT_PAUSED',
+        details: {
+          notificationId: id,
+          subject: notificationLog.subject,
+        },
+      });
+
+      return response.json({ message: 'Incidente pausado com sucesso!' });
+    } catch (error) {
+      console.error("Erro ao pausar incidente:", error);
+      return response.status(500).json({ message: 'Erro ao pausar o incidente.' });
+    }
+  },
+
 };

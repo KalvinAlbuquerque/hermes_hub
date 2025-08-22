@@ -6,14 +6,14 @@ import withAuth from "@/components/withAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 interface Incident {
     id: string;
     subject: string;
     createdAt: string;
-    incidentStatus: 'OPEN' | 'CLOSED';
+    incidentStatus: 'OPEN' | 'CLOSED' | 'PAUSED';
     submittedByUser: { name: string };
     clientes: { name: string }[];
 }
@@ -33,7 +33,7 @@ function ManageIncidentsPage() {
     const [analysts, setAnalysts] = useState<User[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-    const [modalContent, setModalContent] = useState<'history' | 'close' | 'reopen' | null>(null);
+    const [modalContent, setModalContent] = useState<'history' | 'close' | 'reopen' | 'pause' | null>(null);
     const [reminderHistory, setReminderHistory] = useState<ReminderLog[]>([]);
     const [filters, setFilters] = useState({
         incidentStatus: 'OPEN',
@@ -79,7 +79,7 @@ function ManageIncidentsPage() {
         fetchIncidents(filters);
     };
 
-    const openModal = async (incident: Incident, type: 'close' | 'reopen' | 'history') => {
+    const openModal = async (incident: Incident, type: 'close' | 'reopen' | 'history' | 'pause') => {
         setSelectedIncident(incident);
         setModalContent(type);
 
@@ -95,6 +95,21 @@ function ManageIncidentsPage() {
         }
         setIsModalOpen(true);
     }
+
+    const handleConfirmPause = () => {
+        if (!selectedIncident) return;
+        toast.promise(
+            api.post(`/logs/notifications/${selectedIncident.id}/pause`).then(() => {
+                fetchIncidents();
+                setIsModalOpen(false);
+            }),
+            {
+                loading: 'A pausar incidente...',
+                success: <b>Incidente pausado com sucesso!</b>,
+                error: <b>Falha ao pausar o incidente.</b>,
+            }
+        );
+    };
 
     const handleConfirmClose = () => {
         if (!selectedIncident) return;
@@ -146,6 +161,7 @@ function ManageIncidentsPage() {
                         <select id="incidentStatus" name="incidentStatus" value={filters.incidentStatus} onChange={handleFilterChange} className="input-style">
                             <option value="">Todos</option>
                             <option value="OPEN">Abertos</option>
+                            <option value="PAUSED">Pausados</option>
                             <option value="CLOSED">Fechados</option>
                         </select>
                     </div>
@@ -175,8 +191,14 @@ function ManageIncidentsPage() {
                                         <td className="px-6 py-4 text-sm text-foreground">{incident.subject}</td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground">{incident.submittedByUser.name}</td>
                                         <td className="px-6 py-4 text-sm">
-                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${incident.incidentStatus === 'OPEN' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-success/20 text-success'}`}>
-                                                {incident.incidentStatus === 'OPEN' ? 'Aberto' : 'Fechado'}
+                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${incident.incidentStatus === 'OPEN' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                    incident.incidentStatus === 'PAUSED' ? 'bg-blue-500/20 text-blue-400' :
+                                                        'bg-success/20 text-success'
+                                                }`}>
+                                                {incident.incidentStatus === 'OPEN' ? 'Aberto' :
+                                                    incident.incidentStatus === 'PAUSED' ? 'Pausado' :
+                                                        'Fechado'
+                                                }
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right space-x-2">
@@ -184,15 +206,24 @@ function ManageIncidentsPage() {
                                                 <History className="h-3.5 w-3.5 mr-1.5" />
                                                 Histórico
                                             </button>
-                                            {incident.incidentStatus === 'OPEN' ? (
-                                                <button onClick={() => openModal(incident, 'close')} className="btn-secondary text-xs inline-flex items-center">
-                                                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
-                                                    Fechar Incidente
-                                                </button>
-                                            ) : (
+
+                                            {incident.incidentStatus === 'OPEN' && (
+                                                <>
+                                                    <button onClick={() => openModal(incident, 'pause')} className="btn-secondary text-xs inline-flex items-center">
+                                                        <PauseCircle className="h-3.5 w-3.5 mr-1.5" />
+                                                        Pausar
+                                                    </button>
+                                                    <button onClick={() => openModal(incident, 'close')} className="btn-secondary text-xs inline-flex items-center">
+                                                        <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                                                        Fechar
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {(incident.incidentStatus === 'CLOSED' || incident.incidentStatus === 'PAUSED') && (
                                                 <button onClick={() => openModal(incident, 'reopen')} className="btn-secondary text-xs inline-flex items-center">
                                                     <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                                                    Reabrir Incidente
+                                                    Reabrir
                                                 </button>
                                             )}
                                         </td>
@@ -215,19 +246,23 @@ function ManageIncidentsPage() {
             } isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 {selectedIncident && (
                     <>
-                        {(modalContent === 'close' || modalContent === 'reopen') && (
+                        {(modalContent === 'close' || modalContent === 'reopen' || modalContent === 'pause') && (
                             <div className="text-center">
                                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
                                     <AlertTriangle className="h-6 w-6 text-yellow-600" aria-hidden="true" />
                                 </div>
                                 <h3 className="text-lg leading-6 font-medium text-foreground">
-                                    {modalContent === 'close' ? 'Fechar Incidente' : 'Reabrir Incidente'}
+                                    {modalContent === 'close' ? 'Fechar Incidente' :
+                                        modalContent === 'pause' ? 'Pausar Incidente' :
+                                            'Reabrir Incidente'}
                                 </h3>
                                 <div className="mt-2 px-7 py-3">
                                     <p className="text-sm text-muted-foreground">
                                         {modalContent === 'close'
                                             ? `Tem a certeza que deseja marcar o incidente "${selectedIncident.subject}" como fechado?`
-                                            : `Tem a certeza que deseja reabrir o incidente "${selectedIncident.subject}"?`
+                                            : modalContent === 'pause'
+                                                ? `Tem a certeza que deseja pausar o incidente "${selectedIncident.subject}"? Os lembretes automáticos serão interrompidos.`
+                                                : `Tem a certeza que deseja reabrir o incidente "${selectedIncident.subject}"?`
                                         }
                                     </p>
                                 </div>
@@ -235,8 +270,13 @@ function ManageIncidentsPage() {
                                     <button onClick={() => setIsModalOpen(false)} className="btn-secondary w-28">
                                         Cancelar
                                     </button>
-                                    <button onClick={modalContent === 'close' ? handleConfirmClose : handleConfirmReopen}
-                                        className={`${modalContent === 'close' ? 'btn-primary bg-success hover:bg-success/90' : 'btn-primary'} w-28`}>
+                                    <button onClick={
+                                        modalContent === 'close' ? handleConfirmClose :
+                                            modalContent === 'pause' ? handleConfirmPause :
+                                                handleConfirmReopen
+                                    }
+                                        className={`${modalContent === 'close' ? 'btn-primary bg-success hover:bg-success/90' : 'btn-primary'
+                                            } w-28`}>
                                         Confirmar
                                     </button>
                                 </div>
@@ -248,18 +288,19 @@ function ManageIncidentsPage() {
                                 <h3 className="text-lg leading-6 font-medium text-foreground mb-4">
                                     Incidente: "{selectedIncident.subject}"
                                 </h3>
-                                {reminderHistory.length > 0 ? (
-                                    <ul className="space-y-2">
-                                        <li className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
-                                            <div className="flex-shrink-0 bg-blue-500/20 text-blue-400 font-bold h-8 w-8 rounded-full flex items-center justify-center text-sm">
-                                                0
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-foreground">Incidente aberto</p>
-                                                <p className="text-xs text-muted-foreground">{new Date(selectedIncident.createdAt).toLocaleString('pt-BR')}</p>
-                                            </div>
-                                        </li>
-                                        {reminderHistory.map((reminder, index) => (
+                                <ul className="space-y-2">
+                                    <li className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
+                                        <div className="flex-shrink-0 bg-blue-500/20 text-blue-400 font-bold h-8 w-8 rounded-full flex items-center justify-center text-sm">
+                                            0
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground">Incidente aberto</p>
+                                            <p className="text-xs text-muted-foreground">{new Date(selectedIncident.createdAt).toLocaleString('pt-BR')}</p>
+                                        </div>
+                                    </li>
+
+                                    {reminderHistory.length > 0 ? (
+                                        reminderHistory.map((reminder, index) => (
                                             <li key={reminder.id} className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
                                                 <div className="flex-shrink-0 bg-primary/20 text-primary font-bold h-8 w-8 rounded-full flex items-center justify-center text-sm">
                                                     {index + 1}
@@ -269,11 +310,11 @@ function ManageIncidentsPage() {
                                                     <p className="text-xs text-muted-foreground">{new Date(reminder.sentAt).toLocaleString('pt-BR')}</p>
                                                 </div>
                                             </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <p className="text-center text-muted-foreground py-4">Nenhum lembrete foi enviado para este incidente ainda.</p>
-                                )}
+                                        ))
+                                    ) : (
+                                        <li className="text-center text-muted-foreground text-xs pt-2">Nenhum lembrete automático enviado ainda.</li>
+                                    )}
+                                </ul>
                                 <div className="flex justify-end mt-6">
                                     <button onClick={() => setIsModalOpen(false)} className="btn-secondary">Fechar</button>
                                 </div>

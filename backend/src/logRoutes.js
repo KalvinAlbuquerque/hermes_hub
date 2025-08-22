@@ -15,7 +15,7 @@ logRoutes.get('/logs/notifications/:id', NotificationLogController.show);
 logRoutes.get('/logs/notifications/export/csv', ReportController.generateNotificationLogsCSV);
 logRoutes.get('/logs/notifications/export/pdf', ReportController.generateNotificationLogsPDF);
 logRoutes.post('/logs/notifications/:id/close', NotificationLogController.closeIncident);
-logRoutes.post('/logs/notifications/:id/reopen', NotificationLogController.reopenIncident); // NOVA ROTA
 logRoutes.get('/logs/notifications/:id/reminders', NotificationLogController.getReminders);
-
+logRoutes.post('/logs/notifications/:id/pause', NotificationLogController.pauseIncident);
+logRoutes.post('/logs/notifications/:id/reopen', NotificationLogController.reopenIncident); 
 module.exports = logRoutes;
