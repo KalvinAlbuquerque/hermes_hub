@@ -1,17 +1,19 @@
 // frontend/src/app/incidents/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import withAuth from "@/components/withAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle, Send } from 'lucide-react';
+import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle, Send, MoreVertical } from 'lucide-react';
 import Modal from '@/components/Modal';
 
+// 1. Adicionar 'protocol' à interface
 interface Incident {
     id: string;
     subject: string;
+    protocol: string; // <-- ADICIONADO
     createdAt: string;
     incidentStatus: 'OPEN' | 'CLOSED' | 'PAUSED';
     submittedByUser: { name: string };
@@ -26,6 +28,63 @@ interface ReminderLog {
     id: string;
     sentAt: string;
 }
+
+// 2. Componente para o menu de ações
+const ActionsDropdown = ({ incident, openModal, handleSendReminderNow }: { incident: Incident, openModal: Function, handleSendReminderNow: Function }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleActionClick = (action: Function, ...args: any) => {
+        action(...args);
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="relative inline-block text-left" ref={dropdownRef}>
+            <button onClick={() => setIsOpen(!isOpen)} className="btn-secondary px-2 py-2 text-xs">
+                <MoreVertical className="h-4 w-4" />
+            </button>
+            {isOpen && (
+                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-card border border-border ring-1 ring-black ring-opacity-5 z-10">
+                    <div className="py-1" role="menu" aria-orientation="vertical">
+                        <a href="#" onClick={() => handleActionClick(openModal, incident, 'history')} className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:bg-secondary" role="menuitem">
+                            <History className="h-4 w-4" /> Histórico
+                        </a>
+                        {incident.incidentStatus === 'OPEN' && (
+                            <>
+                                <a href="#" onClick={() => handleActionClick(handleSendReminderNow, incident.id, incident.subject)} className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:bg-secondary" role="menuitem">
+                                    <Send className="h-4 w-4" /> Enviar Lembrete
+                                </a>
+                                <a href="#" onClick={() => handleActionClick(openModal, incident, 'pause')} className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:bg-secondary" role="menuitem">
+                                    <PauseCircle className="h-4 w-4" /> Pausar
+                                </a>
+                                <a href="#" onClick={() => handleActionClick(openModal, incident, 'close')} className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:bg-secondary" role="menuitem">
+                                    <ShieldCheck className="h-4 w-4" /> Fechar
+                                </a>
+                            </>
+                        )}
+                        {(incident.incidentStatus === 'CLOSED' || incident.incidentStatus === 'PAUSED') && (
+                            <a href="#" onClick={() => handleActionClick(openModal, incident, 'reopen')} className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:bg-secondary" role="menuitem">
+                                <RotateCcw className="h-4 w-4" /> Reabrir
+                            </a>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 function ManageIncidentsPage() {
     const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -45,7 +104,7 @@ function ManageIncidentsPage() {
         try {
             setLoading(true);
             const params = new URLSearchParams(
-                Object.entries(currentFilters).filter(([, value]) => value !== '')
+                Object.entries(currentFilters).filter(([, value]) => value !== '') as [string, string][]
             ).toString();
 
             const response = await api.get(`/logs/notifications?${params}`);
@@ -71,11 +130,10 @@ function ManageIncidentsPage() {
         fetchInitialData();
     }, []);
 
-    const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => { // Alterado para aceitar Inputs
+    const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
     };
-
 
     const handleApplyFilters = () => {
         fetchIncidents(filters);
@@ -85,14 +143,13 @@ function ManageIncidentsPage() {
         setSelectedIncident(incident);
         setModalContent(type);
 
-        // Se for para ver o histórico, busca os dados
         if (type === 'history') {
             try {
                 const response = await api.get(`/logs/notifications/${incident.id}/reminders`);
                 setReminderHistory(response.data);
             } catch (err) {
                 toast.error('Falha ao carregar o histórico de lembretes.');
-                setReminderHistory([]); // Limpa o histórico em caso de erro
+                setReminderHistory([]);
             }
         }
         setIsModalOpen(true);
@@ -162,7 +219,7 @@ function ManageIncidentsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 border rounded-md border-border">
                     <div>
                         <label htmlFor="protocol" className="block text-sm font-medium text-muted-foreground">Protocolo</label>
-                        <input id="protocol" name="protocol" value={filters.protocol} onChange={handleFilterChange} className="input-style" placeholder="Buscar protocolo..." />
+                        <input id="protocol" name="protocol" value={filters.protocol} onChange={handleFilterChange} className="input-style" placeholder="Buscar protocolo..."/>
                     </div>
                     <div>
                         <label htmlFor="submittedByUserId" className="block text-sm font-medium text-muted-foreground">Analista</label>
@@ -173,7 +230,6 @@ function ManageIncidentsPage() {
                             ))}
                         </select>
                     </div>
-
                     <div>
                         <label htmlFor="incidentStatus" className="block text-sm font-medium text-muted-foreground">Status do Incidente</label>
                         <select id="incidentStatus" name="incidentStatus" value={filters.incidentStatus} onChange={handleFilterChange} className="input-style">
@@ -192,6 +248,7 @@ function ManageIncidentsPage() {
                     <table className="min-w-full divide-y divide-border">
                         <thead className="bg-secondary/50">
                             <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Protocolo</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Data de Abertura</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Assunto</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Enviado Por</th>
@@ -201,10 +258,11 @@ function ManageIncidentsPage() {
                         </thead>
                         <tbody className="divide-y divide-border">
                             {loading ? (
-                                <tr><td colSpan={5} className="text-center py-10 text-muted-foreground">A carregar...</td></tr>
+                                <tr><td colSpan={6} className="text-center py-10 text-muted-foreground">A carregar...</td></tr>
                             ) : incidents.length > 0 ? (
                                 incidents.map((incident) => (
                                     <tr key={incident.id} className="hover:bg-secondary/30 transition-colors">
+                                        <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{incident.protocol}</td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(incident.createdAt).toLocaleString('pt-BR')}</td>
                                         <td className="px-6 py-4 text-sm text-foreground">{incident.subject}</td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground">{incident.submittedByUser.name}</td>
@@ -219,41 +277,18 @@ function ManageIncidentsPage() {
                                                 }
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right space-x-2">
-                                            <button onClick={() => openModal(incident, 'history')} className="btn-secondary text-xs inline-flex items-center">
-                                                <History className="h-3.5 w-3.5 mr-1.5" />
-                                                Histórico
-                                            </button>
-
-                                            {incident.incidentStatus === 'OPEN' && (
-                                                <>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleSendReminderNow(incident.id, incident.subject); }} className="btn-secondary text-xs inline-flex items-center">
-                                                        <Send className="h-3.5 w-3.5 mr-1.5" />
-                                                        Lembrete
-                                                    </button>
-                                                    <button onClick={() => openModal(incident, 'pause')} className="btn-secondary text-xs inline-flex items-center">
-                                                        <PauseCircle className="h-3.5 w-3.5 mr-1.5" />
-                                                        Pausar
-                                                    </button>
-                                                    <button onClick={() => openModal(incident, 'close')} className="btn-secondary text-xs inline-flex items-center">
-                                                        <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
-                                                        Fechar
-                                                    </button>
-                                                </>
-                                            )}
-
-                                            {(incident.incidentStatus === 'CLOSED' || incident.incidentStatus === 'PAUSED') && (
-                                                <button onClick={() => openModal(incident, 'reopen')} className="btn-secondary text-xs inline-flex items-center">
-                                                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                                                    Reabrir
-                                                </button>
-                                            )}
+                                        <td className="px-6 py-4 text-right">
+                                            <ActionsDropdown 
+                                                incident={incident} 
+                                                openModal={openModal} 
+                                                handleSendReminderNow={handleSendReminderNow}
+                                            />
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground">
+                                    <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
                                         Nenhum incidente encontrado para os filtros aplicados.
                                     </td>
                                 </tr>
@@ -263,13 +298,14 @@ function ManageIncidentsPage() {
                 </div>
             </div>
 
+            {/* O Modal permanece o mesmo */}
             <Modal title={
                 modalContent === 'history' ? 'Histórico de Lembretes' : 'Confirmação'
             } isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 {selectedIncident && (
                     <>
                         {(modalContent === 'close' || modalContent === 'reopen' || modalContent === 'pause') && (
-                            <div className="text-center">
+                           <div className="text-center">
                                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
                                     <AlertTriangle className="h-6 w-6 text-yellow-600" aria-hidden="true" />
                                 </div>
@@ -306,9 +342,9 @@ function ManageIncidentsPage() {
                         )}
 
                         {modalContent === 'history' && (
-                            <div>
+                           <div>
                                 <h3 className="text-lg leading-6 font-medium text-foreground mb-4">
-                                    Incidente: "{selectedIncident.subject}"
+                                    Incidente: "{selectedIncident.protocol}"
                                 </h3>
                                 <ul className="space-y-2">
                                     <li className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
