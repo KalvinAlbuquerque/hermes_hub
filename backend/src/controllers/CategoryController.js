@@ -6,10 +6,12 @@ module.exports = {
   // Criar uma nova categoria
   async create(request, response) {
     try {
-      const { name, reminderMode, reminderIntervalHours, reminderSpecificTime, reminderTemplateBody } = request.body;
+      // 1. ADICIONAR "reminderSubject" À DESESTRUTURAÇÃO
+      const { name, reminderSubject, reminderMode, reminderIntervalHours, reminderSpecificTime, reminderTemplateBody } = request.body;
       const category = await prisma.category.create({
         data: {
           name,
+          reminderSubject, // <-- 2. ADICIONAR O CAMPO AQUI
           reminderMode,
           reminderIntervalHours: reminderIntervalHours ? parseInt(reminderIntervalHours) : null,
           reminderSpecificTime,
@@ -42,11 +44,13 @@ module.exports = {
   async update(request, response) {
     try {
       const { id } = request.params;
-      const { name, reminderMode, reminderIntervalHours, reminderSpecificTime, reminderTemplateBody } = request.body;
+      // 1. ADICIONAR "reminderSubject" À DESESTRUTURAÇÃO
+      const { name, reminderSubject, reminderMode, reminderIntervalHours, reminderSpecificTime, reminderTemplateBody } = request.body;
       const category = await prisma.category.update({
         where: { id },
         data: {
             name,
+            reminderSubject, // <-- 2. ADICIONAR O CAMPO AQUI
             reminderMode,
             reminderIntervalHours: reminderIntervalHours ? parseInt(reminderIntervalHours) : null,
             reminderSpecificTime,

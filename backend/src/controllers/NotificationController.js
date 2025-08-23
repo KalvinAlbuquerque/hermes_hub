@@ -17,7 +17,7 @@ module.exports = {
     return response.json(notifications);
   },
 
-   async submit(request, response) {
+  async submit(request, response) {
     const { templateId, clienteIds, recipients, emailAccountId, finalSubject, finalBody } = request.body;
     const senderId = request.user.id;
 
@@ -67,7 +67,7 @@ module.exports = {
     if (finalRecipients.length === 0) {
       return response.status(400).json({ message: 'A lista de destinatários está vazia.' });
     }
-    
+
     const attachmentsForDb = request.files ? request.files.map(file => ({
       filename: file.originalname,
       storedFilename: file.filename,
@@ -94,13 +94,14 @@ module.exports = {
           data: { ...notificationData, status: 'SENT', approvedByUserId: senderId, approvedAt: new Date(), sentAt: new Date() },
         });
 
-        // Gera e salva o protocolo
-        await prisma.notificationLog.update({
-            where: { id: newNotification.id },
-            data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+        // Gera e salva o protocolo, e GUARDA o resultado atualizado
+        const notificationWithProtocol = await prisma.notificationLog.update({
+          where: { id: newNotification.id },
+          data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
         });
 
-        await module.exports.approveAndSend(newNotification);
+        // PASSA o objeto ATUALIZADO para a função de envio
+        await module.exports.approveAndSend(notificationWithProtocol);
 
         await logAction({ userId: senderId, action: 'NOTIFICATION_AUTO_APPROVED', details: { notificationId: newNotification.id, subject: finalSubject } });
         return response.status(200).json({ message: 'Notificação enviada com sucesso!' });
@@ -115,12 +116,12 @@ module.exports = {
 
       // Gera e salva o protocolo
       await prisma.notificationLog.update({
-          where: { id: newNotification.id },
-          data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+        where: { id: newNotification.id },
+        data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
       });
 
       await logAction({ userId: senderId, action: 'NOTIFICATION_SUBMITTED', details: { notificationId: newNotification.id, subject: finalSubject } });
-      
+
       const approvers = await prisma.user.findMany({ where: { profile: { permissions: { path: ['canApproveNotifications'], equals: true } } } });
       for (const approver of approvers) {
         await sendMail({
@@ -203,53 +204,64 @@ module.exports = {
       return response.status(500).json({ message: 'Erro ao buscar detalhes da notificação.' });
     }
   },
-  
+
   async approveAndSend(notification) {
     // 1. Prepara os anexos que foram enviados via upload
     const finalAttachments = Array.isArray(notification.attachments)
       ? notification.attachments.map(att => ({
-          filename: att.filename,
-          path: path.resolve(__dirname, '..', '..', 'public', 'attachments', att.storedFilename)
-        }))
+        filename: att.filename,
+        path: path.resolve(__dirname, '..', '..', 'public', 'attachments', att.storedFilename)
+      }))
       : [];
-    
+
     // 2. Procura por imagens coladas (com 'cid:') no corpo do e-mail
     const inlineImages = notification.body.match(/src="cid:[^"]+"/g) || [];
-    
+
     inlineImages.forEach(imgTag => {
       const cidWithExtension = imgTag.substring(9, imgTag.length - 1);
       const cid = path.parse(cidWithExtension).name;
-      
+
       const attachmentPath = path.resolve(__dirname, '..', '..', 'public', 'attachments');
       try {
         const files = require('fs').readdirSync(attachmentPath);
         const filename = files.find(f => f.startsWith(cid));
 
         if (filename) {
-            finalAttachments.push({
-              filename: filename,
-              path: path.resolve(attachmentPath, filename),
-              cid: cid 
-            });
+          finalAttachments.push({
+            filename: filename,
+            path: path.resolve(attachmentPath, filename),
+            cid: cid
+          });
         }
       } catch (error) {
-          console.error(`[approveAndSend] Erro ao ler diretório de anexos para o CID ${cid}:`, error);
+        console.error(`[approveAndSend] Erro ao ler diretório de anexos para o CID ${cid}:`, error);
       }
     });
 
     // 3. Garante que o protocolo existe e o formata
     const protocol = notification.protocol || `HERMES-${notification.id.substring(0, 8).toUpperCase()}`;
-    
+
     // 4. Substitui o placeholder no corpo e no assunto do e-mail
     const finalHtmlBody = notification.body.replace(/\[PROTOCOLO\]/g, protocol);
     const finalSubject = notification.subject.replace(/\[PROTOCOLO\]/g, protocol);
+
+    // --- LÓGICA PARA ADICIONAR OS E-MAILS EM CÓPIA ---
+    const companyEmailsSetting = await prisma.systemSetting.findUnique({
+      where: { key: 'companyCCEmails' }
+    });
+    let ccEmails = [];
+    if (companyEmailsSetting && companyEmailsSetting.value) {
+      ccEmails = companyEmailsSetting.value.split(',').map(email => email.trim()).filter(Boolean);
+    }
+    // --- FIM DA LÓGICA ---
 
     // 5. Envia o e-mail para cada destinatário
     for (const recipient of notification.recipients) {
       await sendMail({
         to: recipient,
-        subject: finalSubject,      // Usa o assunto com o protocolo
-        html: finalHtmlBody,        // Usa o corpo com o protocolo
+        cc: ccEmails.length > 0 ? ccEmails : undefined, // Adiciona o campo CC
+        subject: finalSubject,
+        html: finalHtmlBody,
         accountId: notification.emailAccountId,
         attachments: finalAttachments
       });
@@ -269,7 +281,7 @@ module.exports = {
       if (!notification.emailAccountId) {
         return response.status(500).json({ message: 'Erro: A notificação não tem uma conta de e-mail de envio associada.' });
       }
-      
+
       // CORREÇÃO: Usa module.exports para chamar a função
       await module.exports.approveAndSend(notification);
 

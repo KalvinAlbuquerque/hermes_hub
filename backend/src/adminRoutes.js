@@ -44,6 +44,7 @@ adminRoutes.post('/email-accounts/test-connection', EmailAccountController.testC
 
 // --- ROTAS PARA GESTÃO DA EMPRESA ---
 adminRoutes.get('/company/settings', CompanyController.getSettings);
+adminRoutes.post('/company/settings', CompanyController.updateSettings); // <-- ADICIONE ESTA LINHA
 adminRoutes.post('/company/logo', CompanyController.uploadLogo); 
 
 // Rotas para Categorias

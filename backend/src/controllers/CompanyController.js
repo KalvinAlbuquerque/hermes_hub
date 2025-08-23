@@ -22,12 +22,40 @@ module.exports = {
   // Função para buscar as configurações da empresa (incluindo o logo)
   async getSettings(request, response) {
     try {
-        const logoSetting = await prisma.systemSetting.findUnique({
-            where: { key: 'companyLogo' }
+        const settings = await prisma.systemSetting.findMany({
+            where: {
+                key: { in: ['companyLogo', 'companyCCEmails'] }
+            }
         });
-        return response.json({ logoUrl: logoSetting ? logoSetting.value : null });
+
+        const logoSetting = settings.find(s => s.key === 'companyLogo');
+        const emailsSetting = settings.find(s => s.key === 'companyCCEmails');
+
+        return response.json({
+            logoUrl: logoSetting ? logoSetting.value : null,
+            companyCCEmails: emailsSetting ? emailsSetting.value : ''
+        });
     } catch (error) {
         return response.status(500).json({ message: "Erro ao buscar configurações da empresa." });
+    }
+  },
+
+  // NOVA FUNÇÃO: Para salvar as configurações de texto (como os e-mails)
+  async updateSettings(request, response) {
+    try {
+      const { companyCCEmails } = request.body;
+
+      // O 'upsert' é perfeito aqui: cria se não existir, atualiza se já existir.
+      await prisma.systemSetting.upsert({
+        where: { key: 'companyCCEmails' },
+        update: { value: companyCCEmails || '' },
+        create: { key: 'companyCCEmails', value: companyCCEmails || '' },
+      });
+
+      return response.json({ message: "Configurações atualizadas com sucesso!" });
+
+    } catch (dbError) {
+      return response.status(500).json({ message: "Erro ao salvar as configurações no banco de dados." });
     }
   },
 

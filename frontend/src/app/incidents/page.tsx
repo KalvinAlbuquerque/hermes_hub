@@ -38,6 +38,7 @@ function ManageIncidentsPage() {
     const [filters, setFilters] = useState({
         incidentStatus: 'OPEN',
         submittedByUserId: '',
+        protocol: '',
     });
 
     const fetchIncidents = async (currentFilters = filters) => {
@@ -70,10 +71,11 @@ function ManageIncidentsPage() {
         fetchInitialData();
     }, []);
 
-    const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => { // Alterado para aceitar Inputs
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
     };
+
 
     const handleApplyFilters = () => {
         fetchIncidents(filters);
@@ -158,7 +160,11 @@ function ManageIncidentsPage() {
                 <h2 className="text-xl font-semibold text-foreground mb-4">Gerenciar Incidentes</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 border rounded-md border-border">
-                    <div className="md:col-span-2">
+                    <div>
+                        <label htmlFor="protocol" className="block text-sm font-medium text-muted-foreground">Protocolo</label>
+                        <input id="protocol" name="protocol" value={filters.protocol} onChange={handleFilterChange} className="input-style" placeholder="Buscar protocolo..." />
+                    </div>
+                    <div>
                         <label htmlFor="submittedByUserId" className="block text-sm font-medium text-muted-foreground">Analista</label>
                         <select id="submittedByUserId" name="submittedByUserId" value={filters.submittedByUserId} onChange={handleFilterChange} className="input-style">
                             <option value="">Todos os Analistas</option>
@@ -167,6 +173,7 @@ function ManageIncidentsPage() {
                             ))}
                         </select>
                     </div>
+
                     <div>
                         <label htmlFor="incidentStatus" className="block text-sm font-medium text-muted-foreground">Status do Incidente</label>
                         <select id="incidentStatus" name="incidentStatus" value={filters.incidentStatus} onChange={handleFilterChange} className="input-style">

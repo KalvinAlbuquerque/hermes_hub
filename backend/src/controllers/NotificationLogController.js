@@ -6,7 +6,8 @@ const { sendMail } = require('../services/EmailService');
 module.exports = {
   // ... (funções index, show não mudam)
   async index(request, response) {
-    const { page = 1, pageSize = 15, templateId, clienteId, status, submittedByUserId, approvedByUserId, subject, startDate, endDate, incidentStatus } = request.query; const pageNum = parseInt(page, 10);
+    const { page = 1, pageSize = 15, templateId, clienteId, status, submittedByUserId, approvedByUserId, subject, startDate, endDate, incidentStatus, protocol } = request.query;
+    const pageNum = parseInt(page, 10);
     const pageSizeNum = parseInt(pageSize, 10);
 
     const where = {};
@@ -23,6 +24,8 @@ module.exports = {
       nextDay.setDate(nextDay.getDate() + 1);
       where.createdAt = { ...where.createdAt, lte: nextDay };
     }
+    // 2. Adicionar a condição de filtro para o protocolo
+    if (protocol) where.protocol = { contains: protocol, mode: 'insensitive' };
 
     try {
       const [logs, total] = await Promise.all([

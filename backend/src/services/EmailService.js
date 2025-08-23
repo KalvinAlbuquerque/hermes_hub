@@ -3,7 +3,8 @@ const nodemailer = require('nodemailer');
 const prisma = require('../database/prisma');
 const { decrypt } = require('./SettingsService');
 
-async function sendMail({ to, subject, html, accountId, attachments = [] }) {
+// 1. Adicionar { cc } aos parâmetros da função
+async function sendMail({ to, cc, subject, html, accountId, attachments = [] }) {
   try {
     const account = await prisma.emailAccount.findUnique({ where: { id: accountId } });
 
@@ -29,11 +30,10 @@ async function sendMail({ to, subject, html, accountId, attachments = [] }) {
     const mailOptions = {
         from: `"${account.name}" <${account.email}>`,
         to,
+        cc, // 2. Adicionar a propriedade cc ao objeto de opções
         subject,
         html,
         attachments: attachments,
-        // A LINHA ABAIXO FOI REMOVIDA PARA CORRIGIR O PROBLEMA DE RENDERIZAÇÃO
-        // headers: { 'Content-Type': 'text/html' }, 
     };
 
     const info = await transporter.sendMail(mailOptions);

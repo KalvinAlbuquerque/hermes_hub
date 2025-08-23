@@ -24,7 +24,7 @@ const convertToCidHtml = (html: string): string => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   const images = doc.querySelectorAll('img[data-cid]');
-  
+
   images.forEach(img => {
     const cid = img.getAttribute('data-cid');
     if (cid) {
@@ -74,19 +74,23 @@ function SendNotificationPage() {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (selectedTemplate) {
             const contentToScan = selectedTemplate.subject + ' ' + selectedTemplate.body;
-            const fieldMatches = contentToScan.match(/\[(\*?)([\w\s:]+)\]/g) || [];
+            const fieldMatches = contentToScan.match(/\[(\*?)(.+?)\]/g) || [];
 
+            // --- CORREÇÃO: Ignorar a tag [PROTOCOLO] ---
             const uniqueFields = [...new Set(fieldMatches)]
-                .filter(field => !field.toUpperCase().startsWith('[IMAGEM'))
+                .filter(field =>
+                    !field.toUpperCase().startsWith('[IMAGEM') &&
+                    field.toUpperCase() !== '[PROTOCOLO]' // <-- ADICIONADO AQUI
+                )
                 .map(fieldName => {
                     const isRequired = fieldName.startsWith('[*');
-                    const key = isRequired 
+                    const key = isRequired
                         ? fieldName.substring(2, fieldName.length - 1).trim()
                         : fieldName.substring(1, fieldName.length - 1).trim();
-                    
+
                     return { key, name: fieldName, required: isRequired };
                 });
-            
+
             setTemplateFields(uniqueFields);
             setVariables(uniqueFields.reduce((acc, field) => ({ ...acc, [field.key]: '' }), {}));
         } else {
@@ -94,7 +98,7 @@ function SendNotificationPage() {
             setVariables({});
         }
     }, [selectedTemplateId, templates]);
-    
+
     const handleGoToStep2 = () => {
         if (!selectedEmailAccountId) {
             toast.error('Por favor, selecione um remetente.');
@@ -118,7 +122,7 @@ function SendNotificationPage() {
             toast.error('Por favor, insira ao menos um destinatário.');
             return;
         }
-        
+
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (!selectedTemplate) return;
 
@@ -126,9 +130,8 @@ function SendNotificationPage() {
         let newSubject = selectedTemplate.subject;
 
         for (const field of templateFields) {
-            const regex = new RegExp(`\\${field.name.replace(/([.*+?^${}()|[\]\\])/g, '\\$1')}`, 'g');
-            newBody = newBody.replace(regex, variables[field.key] || '');
-            newSubject = newSubject.replace(regex, variables[field.key] || '');
+            newBody = newBody.replaceAll(field.name, variables[field.key] || '');
+            newSubject = newSubject.replaceAll(field.name, variables[field.key] || '');
         }
 
         setEditableBody(newBody);
@@ -139,10 +142,10 @@ function SendNotificationPage() {
     const handleClienteSelection = (clienteId: string) => { setSelectedClienteIds(prev => prev.includes(clienteId) ? prev.filter(id => id !== clienteId) : [...prev, clienteId]); };
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) { const newFiles = Array.from(e.target.files); setAttachments(prev => [...prev, ...newFiles]); } };
     const removeAttachment = (fileToRemove: File) => { setAttachments(prev => prev.filter(file => file !== fileToRemove)); };
-    
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (editableSubject.trim() === '') {
             toast.error("O assunto não pode estar vazio.");
             setStep(2);
@@ -168,9 +171,9 @@ function SendNotificationPage() {
             recipientsArray.forEach(email => formData.append('recipients[]', email));
         }
         attachments.forEach(file => { formData.append('attachments', file); });
-        
+
         const promise = api.post('/notifications/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' }, });
-        
+
         toast.promise(promise, {
             loading: 'A submeter notificação...',
             success: (res) => { setStep(1); setSelectedTemplateId(''); setAttachments([]); return <b>{res.data.message}</b>; },
@@ -213,12 +216,12 @@ function SendNotificationPage() {
                                                             {field.key}
                                                             {field.required && <span className="text-destructive ml-1">*</span>}
                                                         </label>
-                                                        <input 
-                                                            type="text" 
-                                                            value={variables[field.key] || ''} 
-                                                            onChange={(e) => setVariables(prev => ({ ...prev, [field.key]: e.target.value }))} 
-                                                            className="input-style" 
-                                                            required={field.required} 
+                                                        <input
+                                                            type="text"
+                                                            value={variables[field.key] || ''}
+                                                            onChange={(e) => setVariables(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                                            className="input-style"
+                                                            required={field.required}
                                                         />
                                                     </div>
                                                 ))}
@@ -283,7 +286,7 @@ function SendNotificationPage() {
                             </div>
                         </div>
                     )}
-                    
+
                     {step === 2 && (
                         <div>
                             <h2 className="text-xl font-semibold text-foreground">Passo 2: Edição do Conteúdo</h2>
