@@ -123,7 +123,7 @@ module.exports = {
           _count: { select: { notificationLogs: { where: dateFilter } } }
         }
       });
-      
+
       const categoryCounts = templatesWithCategoryCounts.reduce((acc, template) => {
         if (template.category) {
           const categoryName = template.category.name;
@@ -134,11 +134,46 @@ module.exports = {
         }
         return acc;
       }, {});
-      
+
       const notificationsByCategory = Object.entries(categoryCounts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count);
 
+      const repliedNotifications = await prisma.notificationLog.findMany({
+        where: {
+          ...dateFilter,
+          replyStatus: 'REPLIED',
+          repliedAt: { not: null },
+          clientes: { some: {} } // Garante que apenas notificações com clientes associados sejam consideradas
+        },
+        select: {
+          createdAt: true,
+          repliedAt: true,
+          clientes: {
+            select: { name: true }
+          }
+        }
+      });
+
+      const responseTimes = {};
+      repliedNotifications.forEach(notification => {
+        const responseTime = new Date(notification.repliedAt).getTime() - new Date(notification.createdAt).getTime();
+        notification.clientes.forEach(cliente => {
+          if (!responseTimes[cliente.name]) {
+            responseTimes[cliente.name] = { totalTime: 0, count: 0 };
+          }
+          responseTimes[cliente.name].totalTime += responseTime;
+          responseTimes[cliente.name].count++;
+        });
+      });
+
+      const averageResponseTimeByClient = Object.entries(responseTimes)
+        .map(([name, data]) => ({
+          name,
+          // Converte o tempo médio de milissegundos para horas
+          averageHours: (data.totalTime / data.count) / (1000 * 60 * 60)
+        }))
+        .sort((a, b) => a.averageHours - b.averageHours); // Ordena do mais rápido para o mais lento
 
       // --- 6. Monta o objeto final de resposta ---
       const stats = {
@@ -148,6 +183,7 @@ module.exports = {
         topSubmitters,
         openIncidentsByAnalyst,
         notificationsByCategory,
+        averageResponseTimeByClient, // Adiciona o novo dado
       };
 
       return response.json(stats);
