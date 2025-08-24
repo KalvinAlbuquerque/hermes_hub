@@ -11,6 +11,7 @@ logRoutes.use(authMiddleware);
 logRoutes.get('/audit-logs/actions', AuditLogController.getDistinctActions);
 
 logRoutes.get('/logs/notifications', NotificationLogController.index);
+logRoutes.get('/logs/notifications/recent-replies', NotificationLogController.getRecentReplies); // NOVA ROTA
 logRoutes.get('/logs/notifications/:id', NotificationLogController.show);
 logRoutes.get('/logs/notifications/export/csv', ReportController.generateNotificationLogsCSV);
 logRoutes.get('/logs/notifications/export/pdf', ReportController.generateNotificationLogsPDF);
@@ -19,4 +20,5 @@ logRoutes.get('/logs/notifications/:id/reminders', NotificationLogController.get
 logRoutes.post('/logs/notifications/:id/pause', NotificationLogController.pauseIncident);
 logRoutes.post('/logs/notifications/:id/reopen', NotificationLogController.reopenIncident); 
 logRoutes.post('/logs/notifications/:id/send-reminder', NotificationLogController.sendManualReminder);
+
 module.exports = logRoutes;

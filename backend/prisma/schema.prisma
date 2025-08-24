@@ -96,6 +96,7 @@ model NotificationLog {
   subject           String
   body              String
   emailAccountId    String?
+  repliedAt         DateTime? 
   emailAccount      EmailAccount? @relation(fields: [emailAccountId], references: [id])
   attachments       Json?
   templateId        String
@@ -109,8 +110,10 @@ model NotificationLog {
   clientes          Cliente[]
   nextReminderAt    DateTime?     // Armazena a data/hora exata do próximo lembrete
   protocol          String?       @unique // Adicionamos como opcional e único
-  // LINHA ADICIONADA PARA CORRIGIR O ERRO
+  replyStatus       String? 
   reminders         ReminderLog[]
+  messageId         String? 
+
 
   @@map("notification_logs")
 }

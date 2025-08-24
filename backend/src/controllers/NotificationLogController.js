@@ -3,8 +3,8 @@ const prisma = require('../database/prisma');
 const { logAction } = require('../services/AuditLogService');
 const { calculateNextReminder } = require('../services/CronService');
 const { sendMail } = require('../services/EmailService');
+
 module.exports = {
-  // ... (funções index, show não mudam)
   async index(request, response) {
     const { page = 1, pageSize = 15, templateId, clienteId, status, submittedByUserId, approvedByUserId, subject, startDate, endDate, incidentStatus, protocol } = request.query;
     const pageNum = parseInt(page, 10);
@@ -24,7 +24,6 @@ module.exports = {
       nextDay.setDate(nextDay.getDate() + 1);
       where.createdAt = { ...where.createdAt, lte: nextDay };
     }
-    // 2. Adicionar a condição de filtro para o protocolo
     if (protocol) where.protocol = { contains: protocol, mode: 'insensitive' };
 
     try {
@@ -55,6 +54,38 @@ module.exports = {
     }
   },
 
+  // ... (outras funções permanecem iguais)
+
+  async getRecentReplies(request, response) {
+    try {
+        const recentReplies = await prisma.notificationLog.findMany({
+            where: {
+                replyStatus: 'REPLIED',
+            },
+            orderBy: {
+                // Você pode querer ordenar por uma nova data de 'replyAt' no futuro
+                createdAt: 'desc',
+            },
+            take: 10, // Limita a 10 notificações mais recentes
+            select: {
+                id: true,
+                protocol: true,
+                subject: true,
+                clientes: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+        });
+        return response.json(recentReplies);
+    } catch (error) {
+        console.error("Erro ao buscar respostas recentes:", error);
+        return response.status(500).json({ message: 'Erro ao buscar respostas recentes.' });
+    }
+  },
+  
+  // ... (resto do arquivo)
   async sendManualReminder(request, response) {
     try {
       const { id } = request.params;
@@ -75,22 +106,20 @@ module.exports = {
       const category = incident.template.category;
       const protocol = `HERMES-${incident.id.substring(0, 8).toUpperCase()}`;
 
-      // Envia o e-mail
       await sendMail({
         to: incident.recipients,
         subject: `[LEMBRETE] Pendência em Aberto: ${incident.subject}`,
         html: category.reminderTemplateBody.replace(/\[PROTOCOLO\]/g, protocol),
         accountId: incident.emailAccountId,
+        notificationId: incident.id, // Passa o ID para o cabeçalho
       });
 
-      // Recalcula o próximo lembrete para evitar envios duplicados
       const nextReminderDate = calculateNextReminder(category);
       await prisma.notificationLog.update({
         where: { id: incident.id },
         data: { nextReminderAt: nextReminderDate },
       });
 
-      // Registra no histórico
       await prisma.reminderLog.create({ data: { notificationLogId: incident.id } });
 
       await logAction({
@@ -105,7 +134,6 @@ module.exports = {
       return response.status(500).json({ message: 'Erro ao enviar lembrete manual.' });
     }
   },
-
 
   async show(request, response) {
     try {
@@ -159,7 +187,6 @@ module.exports = {
     }
   },
 
-  // NOVA FUNÇÃO
   async reopenIncident(request, response) {
     try {
       const { id } = request.params;
@@ -228,5 +255,4 @@ module.exports = {
       return response.status(500).json({ message: 'Erro ao pausar o incidente.' });
     }
   },
-
 };

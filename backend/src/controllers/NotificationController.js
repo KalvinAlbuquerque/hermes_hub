@@ -206,109 +206,91 @@ module.exports = {
   },
 
   async approveAndSend(notification) {
-    // 1. Prepara os anexos que foram enviados via upload
     const finalAttachments = Array.isArray(notification.attachments)
       ? notification.attachments.map(att => ({
         filename: att.filename,
         path: path.resolve(__dirname, '..', '..', 'public', 'attachments', att.storedFilename)
       }))
       : [];
-
-    // 2. Procura por imagens coladas (com 'cid:') no corpo do e-mail
     const inlineImages = notification.body.match(/src="cid:[^"]+"/g) || [];
-
     inlineImages.forEach(imgTag => {
-      const cidWithExtension = imgTag.substring(9, imgTag.length - 1);
-      const cid = path.parse(cidWithExtension).name;
-
+      const cid = imgTag.substring(9, imgTag.length - 1);
       const attachmentPath = path.resolve(__dirname, '..', '..', 'public', 'attachments');
       try {
         const files = require('fs').readdirSync(attachmentPath);
         const filename = files.find(f => f.startsWith(cid));
-
         if (filename) {
-          finalAttachments.push({
-            filename: filename,
-            path: path.resolve(attachmentPath, filename),
-            cid: cid
-          });
+          finalAttachments.push({ filename: filename, path: path.resolve(attachmentPath, filename), cid: cid });
         }
-      } catch (error) {
-        console.error(`[approveAndSend] Erro ao ler diretório de anexos para o CID ${cid}:`, error);
-      }
+      } catch (error) { console.error(`[approveAndSend] Erro ao ler diretório de anexos para o CID ${cid}:`, error); }
     });
 
-    // 3. Garante que o protocolo existe e o formata
     const protocol = notification.protocol || `HERMES-${notification.id.substring(0, 8).toUpperCase()}`;
-
-    // 4. Substitui o placeholder no corpo e no assunto do e-mail
     const finalHtmlBody = notification.body.replace(/\[PROTOCOLO\]/g, protocol);
     const finalSubject = notification.subject.replace(/\[PROTOCOLO\]/g, protocol);
-
-    // --- LÓGICA PARA ADICIONAR OS E-MAILS EM CÓPIA ---
-    const companyEmailsSetting = await prisma.systemSetting.findUnique({
-      where: { key: 'companyCCEmails' }
-    });
+    const companyEmailsSetting = await prisma.systemSetting.findUnique({ where: { key: 'companyCCEmails' } });
     let ccEmails = [];
     if (companyEmailsSetting && companyEmailsSetting.value) {
       ccEmails = companyEmailsSetting.value.split(',').map(email => email.trim()).filter(Boolean);
     }
-    // --- FIM DA LÓGICA ---
+    
+    // O envio agora acontece para o primeiro destinatário para pegar o Message-ID
+    const firstRecipient = notification.recipients[0];
+    if (!firstRecipient) return;
 
-    // 5. Envia o e-mail para cada destinatário
-    for (const recipient of notification.recipients) {
-      await sendMail({
-        to: recipient,
-        cc: ccEmails.length > 0 ? ccEmails : undefined, // Adiciona o campo CC
-        subject: finalSubject,
-        html: finalHtmlBody,
-        accountId: notification.emailAccountId,
-        attachments: finalAttachments
+    const result = await sendMail({
+      to: firstRecipient,
+      cc: ccEmails.length > 0 ? ccEmails : undefined,
+      subject: finalSubject,
+      html: finalHtmlBody,
+      accountId: notification.emailAccountId,
+      attachments: finalAttachments,
+      // Passamos o notificationId para o cabeçalho In-Reply-To nos lembretes
+    });
+
+    // Se o envio principal foi bem-sucedido e temos um messageId, salvamos e enviamos para os outros
+    if (result.success && result.messageId) {
+      await prisma.notificationLog.update({
+        where: { id: notification.id },
+        data: { messageId: result.messageId },
       });
+
+      // Envia para os destinatários restantes, se houver
+      const remainingRecipients = notification.recipients.slice(1);
+      for (const recipient of remainingRecipients) {
+        await sendMail({
+          to: recipient,
+          cc: ccEmails.length > 0 ? ccEmails : undefined,
+          subject: finalSubject,
+          html: finalHtmlBody,
+          accountId: notification.emailAccountId,
+          attachments: finalAttachments,
+        });
+      }
+    } else {
+        throw new Error("Falha ao enviar e-mail principal ou obter Message-ID.");
     }
   },
 
   async approve(request, response) {
     const { id } = request.params;
     const approverId = request.user.id;
-
     try {
       const notification = await prisma.notificationLog.findUnique({ where: { id } });
+      if (!notification || notification.status !== 'PENDING') { return response.status(404).json({ message: 'Notificação não encontrada ou já processada.' }); }
+      if (!notification.emailAccountId) { return response.status(500).json({ message: 'Erro: A notificação não tem uma conta de e-mail de envio associada.' }); }
 
-      if (!notification || notification.status !== 'PENDING') {
-        return response.status(404).json({ message: 'Notificação não encontrada ou já processada.' });
-      }
-      if (!notification.emailAccountId) {
-        return response.status(500).json({ message: 'Erro: A notificação não tem uma conta de e-mail de envio associada.' });
-      }
-
-      // CORREÇÃO: Usa module.exports para chamar a função
       await module.exports.approveAndSend(notification);
 
       await prisma.notificationLog.update({
         where: { id },
-        data: {
-          status: 'SENT',
-          approvedByUserId: approverId,
-          approvedAt: new Date(),
-          sentAt: new Date(),
-        },
+        data: { status: 'SENT', approvedByUserId: approverId, approvedAt: new Date(), sentAt: new Date() },
       });
-
-      await logAction({
-        userId: approverId,
-        action: 'NOTIFICATION_APPROVE',
-        details: { notificationId: id, subject: notification.subject }
-      });
-
+      await logAction({ userId: approverId, action: 'NOTIFICATION_APPROVE', details: { notificationId: id, subject: notification.subject } });
       return response.json({ message: 'Notificação aprovada e enviada.' });
-
     } catch (error) {
       console.error("Erro ao aprovar e enviar notificação:", error);
-      await prisma.notificationLog.update({
-        where: { id },
-        data: { status: 'FAILED' },
-      });
+      await prisma.notificationLog.update({ where: { id }, data: { status: 'FAILED' } });
       return response.status(500).json({ message: 'Erro ao enviar notificação.' });
     }
   },

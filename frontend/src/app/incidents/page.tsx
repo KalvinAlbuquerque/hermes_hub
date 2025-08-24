@@ -6,18 +6,26 @@ import withAuth from "@/components/withAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle, Send, MoreVertical } from 'lucide-react';
+import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle, Send, MoreVertical, 
+    MessageSquare, Mail, Bell } from 'lucide-react';
 import Modal from '@/components/Modal';
 
-// 1. Adicionar 'protocol' à interface
+// 1. Adicionar 'protocol' e 'replyStatus' à interface
 interface Incident {
     id: string;
     subject: string;
-    protocol: string; // <-- ADICIONADO
+    protocol: string;
     createdAt: string;
+    repliedAt?: string;
     incidentStatus: 'OPEN' | 'CLOSED' | 'PAUSED';
+    replyStatus?: 'REPLIED'; // <-- ADICIONADO
     submittedByUser: { name: string };
     clientes: { name: string }[];
+}
+
+interface TimelineEvent {
+    type: 'OPENED' | 'REPLIED' | 'REMINDER';
+    date: string;
 }
 
 interface User {
@@ -29,7 +37,6 @@ interface ReminderLog {
     sentAt: string;
 }
 
-// 2. Componente para o menu de ações
 const ActionsDropdown = ({ incident, openModal, handleSendReminderNow }: { incident: Incident, openModal: Function, handleSendReminderNow: Function }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -94,6 +101,7 @@ function ManageIncidentsPage() {
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
     const [modalContent, setModalContent] = useState<'history' | 'close' | 'reopen' | 'pause' | null>(null);
     const [reminderHistory, setReminderHistory] = useState<ReminderLog[]>([]);
+    const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
     const [filters, setFilters] = useState({
         incidentStatus: 'OPEN',
         submittedByUserId: '',
@@ -145,11 +153,30 @@ function ManageIncidentsPage() {
 
         if (type === 'history') {
             try {
-                const response = await api.get(`/logs/notifications/${incident.id}/reminders`);
-                setReminderHistory(response.data);
+                // 3. Busca os lembretes E os detalhes do incidente principal
+                const [remindersRes, incidentDetailsRes] = await Promise.all([
+                    api.get(`/logs/notifications/${incident.id}/reminders`),
+                    api.get(`/logs/notifications/${incident.id}`) // Para pegar o 'repliedAt'
+                ]);
+
+                const reminders: ReminderLog[] = remindersRes.data;
+                const incidentDetails: Incident = incidentDetailsRes.data;
+
+                // 4. Constrói a timeline unificada
+                const events: TimelineEvent[] = [];
+                events.push({ type: 'OPENED', date: incidentDetails.createdAt });
+                if (incidentDetails.repliedAt) {
+                    events.push({ type: 'REPLIED', date: incidentDetails.repliedAt });
+                }
+                reminders.forEach(r => events.push({ type: 'REMINDER', date: r.sentAt }));
+
+                // 5. Ordena todos os eventos cronologicamente
+                events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                setTimeline(events);
+
             } catch (err) {
-                toast.error('Falha ao carregar o histórico de lembretes.');
-                setReminderHistory([]);
+                toast.error('Falha ao carregar o histórico do incidente.');
+                setTimeline([]);
             }
         }
         setIsModalOpen(true);
@@ -219,7 +246,7 @@ function ManageIncidentsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 border rounded-md border-border">
                     <div>
                         <label htmlFor="protocol" className="block text-sm font-medium text-muted-foreground">Protocolo</label>
-                        <input id="protocol" name="protocol" value={filters.protocol} onChange={handleFilterChange} className="input-style" placeholder="Buscar protocolo..."/>
+                        <input id="protocol" name="protocol" value={filters.protocol} onChange={handleFilterChange} className="input-style" placeholder="Buscar protocolo..." />
                     </div>
                     <div>
                         <label htmlFor="submittedByUserId" className="block text-sm font-medium text-muted-foreground">Analista</label>
@@ -267,20 +294,28 @@ function ManageIncidentsPage() {
                                         <td className="px-6 py-4 text-sm text-foreground">{incident.subject}</td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground">{incident.submittedByUser.name}</td>
                                         <td className="px-6 py-4 text-sm">
-                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${incident.incidentStatus === 'OPEN' ? 'bg-yellow-500/20 text-yellow-500' :
-                                                incident.incidentStatus === 'PAUSED' ? 'bg-blue-500/20 text-blue-400' :
-                                                    'bg-success/20 text-success'
-                                                }`}>
-                                                {incident.incidentStatus === 'OPEN' ? 'Aberto' :
-                                                    incident.incidentStatus === 'PAUSED' ? 'Pausado' :
-                                                        'Fechado'
-                                                }
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${incident.incidentStatus === 'OPEN' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                    incident.incidentStatus === 'PAUSED' ? 'bg-blue-500/20 text-blue-400' :
+                                                        'bg-success/20 text-success'
+                                                    }`}>
+                                                    {incident.incidentStatus === 'OPEN' ? 'Aberto' :
+                                                        incident.incidentStatus === 'PAUSED' ? 'Pausado' :
+                                                            'Fechado'
+                                                    }
+                                                </span>
+                                                {incident.replyStatus === 'REPLIED' && (
+                                                    <span title="Respondido" className="flex items-center gap-1 text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">
+                                                        <MessageSquare className="h-3 w-3" />
+                                                        Respondido
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <ActionsDropdown 
-                                                incident={incident} 
-                                                openModal={openModal} 
+                                            <ActionsDropdown
+                                                incident={incident}
+                                                openModal={openModal}
                                                 handleSendReminderNow={handleSendReminderNow}
                                             />
                                         </td>
@@ -298,14 +333,13 @@ function ManageIncidentsPage() {
                 </div>
             </div>
 
-            {/* O Modal permanece o mesmo */}
             <Modal title={
                 modalContent === 'history' ? 'Histórico de Lembretes' : 'Confirmação'
             } isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 {selectedIncident && (
                     <>
                         {(modalContent === 'close' || modalContent === 'reopen' || modalContent === 'pause') && (
-                           <div className="text-center">
+                            <div className="text-center">
                                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
                                     <AlertTriangle className="h-6 w-6 text-yellow-600" aria-hidden="true" />
                                 </div>
@@ -342,36 +376,33 @@ function ManageIncidentsPage() {
                         )}
 
                         {modalContent === 'history' && (
-                           <div>
+                            <div>
                                 <h3 className="text-lg leading-6 font-medium text-foreground mb-4">
                                     Incidente: "{selectedIncident.protocol}"
                                 </h3>
                                 <ul className="space-y-2">
-                                    <li className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
-                                        <div className="flex-shrink-0 bg-blue-500/20 text-blue-400 font-bold h-8 w-8 rounded-full flex items-center justify-center text-sm">
-                                            0
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-foreground">Incidente aberto</p>
-                                            <p className="text-xs text-muted-foreground">{new Date(selectedIncident.createdAt).toLocaleString('pt-BR')}</p>
-                                        </div>
-                                    </li>
+                                    {/* 6. Renderiza a timeline unificada */}
+                                    {timeline.map((event, index) => {
+                                        const eventConfig = {
+                                            OPENED: { icon: Mail, text: 'Incidente aberto', color: 'blue' },
+                                            REPLIED: { icon: MessageSquare, text: 'Resposta recebida', color: 'purple' },
+                                            REMINDER: { icon: Bell, text: 'Lembrete enviado', color: 'primary' }
+                                        };
+                                        const config = eventConfig[event.type];
+                                        const Icon = config.icon;
 
-                                    {reminderHistory.length > 0 ? (
-                                        reminderHistory.map((reminder, index) => (
-                                            <li key={reminder.id} className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
-                                                <div className="flex-shrink-0 bg-primary/20 text-primary font-bold h-8 w-8 rounded-full flex items-center justify-center text-sm">
-                                                    {index + 1}
+                                        return (
+                                            <li key={index} className="p-3 rounded-md bg-secondary/50 flex items-center gap-4">
+                                                <div className={`flex-shrink-0 bg-${config.color}-500/20 text-${config.color}-400 font-bold h-8 w-8 rounded-full flex items-center justify-center text-sm`}>
+                                                    <Icon className="h-4 w-4" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-medium text-foreground">Lembrete enviado</p>
-                                                    <p className="text-xs text-muted-foreground">{new Date(reminder.sentAt).toLocaleString('pt-BR')}</p>
+                                                    <p className="text-sm font-medium text-foreground">{config.text}</p>
+                                                    <p className="text-xs text-muted-foreground">{new Date(event.date).toLocaleString('pt-BR')}</p>
                                                 </div>
                                             </li>
-                                        ))
-                                    ) : (
-                                        <li className="text-center text-muted-foreground text-xs pt-2">Nenhum lembrete automático enviado ainda.</li>
-                                    )}
+                                        );
+                                    })}
                                 </ul>
                                 <div className="flex justify-end mt-6">
                                     <button onClick={() => setIsModalOpen(false)} className="btn-secondary">Fechar</button>

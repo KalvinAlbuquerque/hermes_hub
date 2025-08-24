@@ -19,8 +19,10 @@
     "express": "^5.1.0",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
+    "mailparser": "^3.7.0",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
+    "node-imap": "^0.9.6",
     "nodemailer": "^7.0.5",
     "pdfkit": "^0.17.1",
     "pg": "^8.16.3"
