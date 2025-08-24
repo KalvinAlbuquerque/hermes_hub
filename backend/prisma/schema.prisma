@@ -89,6 +89,7 @@ model SystemSetting {
 model NotificationLog {
   id                String        @id @default(uuid())
   recipients        Json
+  senderHasReadReply   Boolean
   status            String
   sentAt            DateTime?
   createdAt         DateTime      @default(now())

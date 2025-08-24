@@ -21,7 +21,7 @@
 }
 
 @layer components {
-  /* Estilo base para os cards, agora com uma borda sutil */
+  /* Estilo base para os cards */
   .card {
     @apply bg-card text-card-foreground p-6 rounded-lg border border-border shadow-md;
   }
@@ -33,7 +33,7 @@
            focus:outline-none focus:ring-2 focus:ring-ring;
   }
 
-  /* Classes de botões atualizadas */
+  /* Classes de botões */
   .btn {
     @apply px-4 py-2 inline-flex items-center justify-center rounded-md font-semibold text-sm 
            transition-colors
@@ -43,9 +43,11 @@
     @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
   }
   .btn-secondary {
-    @apply btn bg-secondary hover:bg-secondary/90 border border-border;
+    /* --- ALTERAÇÃO AQUI --- */
+    /* Adicionamos a cor do texto para garantir a legibilidade */
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/90 border border-border;
   }
   .btn-destructive {
-    @apply btn bg-destructive text-destructive-foreground hover:bg-destructive/90;
+    @apply btn bg-destructive text-white hover:bg-destructive/90;
   }
 }

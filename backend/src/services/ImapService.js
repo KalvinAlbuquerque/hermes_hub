@@ -44,7 +44,8 @@ const initialize = async () => {
                         data: {
                             replyStatus: 'REPLIED',
                             incidentStatus: 'PAUSED',
-                            repliedAt: new Date(), // ADICIONA O TIMESTAMP AQUI
+                            repliedAt: new Date(),
+                            senderHasReadReply: false, // Define como não lido para o remetente
                         },
                     });
                     await logAction({

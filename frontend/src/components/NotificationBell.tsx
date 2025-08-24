@@ -6,11 +6,12 @@ import api from '@/lib/api';
 import { Bell, MessageSquare } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+// 1. Interface atualizada com o status de leitura
 interface RepliedNotification {
     id: string;
     protocol: string;
     subject: string;
-    clientes: { name: string }[];
+    senderHasReadReply: boolean;
 }
 
 export default function NotificationBell() {
@@ -19,44 +20,61 @@ export default function NotificationBell() {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
+    const fetchRecentReplies = async () => {
+        try {
+            // 2. Chama a nova rota específica do usuário
+            const response = await api.get('/logs/notifications/my-replies');
+            setNotifications(response.data);
+        } catch (error) {
+            console.error("Falha ao buscar respostas recentes.");
+        }
+    };
+    
     useEffect(() => {
-        const fetchRecentReplies = async () => {
-            try {
-                const response = await api.get('/logs/notifications/recent-replies');
-                setNotifications(response.data);
-            } catch (error) {
-                console.error("Falha ao buscar respostas recentes.");
-            }
-        };
-
         fetchRecentReplies();
-        const interval = setInterval(fetchRecentReplies, 60000); // Atualiza a cada minuto
-
+        const interval = setInterval(fetchRecentReplies, 30000); // Verifica a cada 30 segundos
         return () => clearInterval(interval);
     }, []);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    const markAsRead = async () => {
+        const unreadIds = notifications.filter(n => !n.senderHasReadReply).map(n => n.id);
+        if (unreadIds.length === 0) return;
 
-    const handleNotificationClick = (notificationId: string) => {
-        setIsOpen(false);
-        // Simplesmente navega para a página de incidentes.
-        // Uma melhoria futura poderia ser filtrar por este incidente específico.
-        router.push('/incidents');
+        // 3. Atualiza o estado local imediatamente para uma UI mais rápida
+        const updatedNotifications = notifications.map(n => 
+            unreadIds.includes(n.id) ? { ...n, senderHasReadReply: true } : n
+        );
+        setNotifications(updatedNotifications);
+
+        // 4. Envia a requisição para o backend em segundo plano
+        try {
+            await api.post('/logs/notifications/mark-replies-as-read', { notificationIds: unreadIds });
+        } catch (error) {
+            console.error("Falha ao marcar notificações como lidas.");
+            // Opcional: reverter o estado local em caso de falha
+        }
     };
+
+    const handleBellClick = () => {
+        setIsOpen(!isOpen);
+        if (!isOpen) {
+            markAsRead();
+        }
+    };
+
+    const handleNotificationClick = (protocol: string) => {
+        setIsOpen(false);
+        router.push(`/incidents?protocol=${protocol}`); // Navega e prepara para filtrar
+    };
+
+    // 5. Lógica para exibir o indicador azul
+    const hasUnread = notifications.some(n => !n.senderHasReadReply);
 
     return (
         <div className="relative" ref={dropdownRef}>
-            <button onClick={() => setIsOpen(!isOpen)} className="relative p-2 text-muted-foreground hover:text-foreground">
+            <button onClick={handleBellClick} className="relative p-2 text-muted-foreground hover:text-foreground">
                 <Bell className="h-5 w-5" />
-                {notifications.length > 0 && (
+                {hasUnread && (
                     <span className="absolute top-1 right-1 flex h-3 w-3">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
@@ -72,15 +90,15 @@ export default function NotificationBell() {
                     <ul className="py-1 max-h-96 overflow-y-auto">
                         {notifications.length > 0 ? (
                             notifications.map(notif => (
-                                <li key={notif.id}>
-                                    <a href="#" onClick={() => handleNotificationClick(notif.id)} className="flex items-start gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-secondary">
+                                <li key={notif.id} className={!notif.senderHasReadReply ? 'bg-primary/10' : ''}>
+                                    <a href="#" onClick={() => handleNotificationClick(notif.protocol)} className="flex items-start gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-secondary">
                                         <div className="mt-1">
-                                            <MessageSquare className="h-4 w-4 text-purple-400" />
+                                            <MessageSquare className={`h-4 w-4 ${!notif.senderHasReadReply ? 'text-primary' : 'text-purple-400'}`} />
                                         </div>
-                                        <div>
+                                        <div className={!notif.senderHasReadReply ? '' : 'opacity-60'}>
                                             <p className="text-foreground font-medium">Resposta Recebida</p>
                                             <p className="text-xs">
-                                                O incidente <span className="font-mono">{notif.protocol}</span> ({notif.subject}) foi respondido.
+                                                O incidente <span className="font-mono">{notif.protocol}</span> foi respondido.
                                             </p>
                                         </div>
                                     </a>
@@ -88,7 +106,7 @@ export default function NotificationBell() {
                             ))
                         ) : (
                             <li className="px-4 py-3 text-sm text-center text-muted-foreground">
-                                Nenhuma resposta recente.
+                                Nenhuma resposta recebida.
                             </li>
                         )}
                     </ul>
