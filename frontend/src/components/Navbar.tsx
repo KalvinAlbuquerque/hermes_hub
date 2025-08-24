@@ -4,10 +4,12 @@
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
-import NotificationBell from './NotificationBell'; // 1. Importar o novo componente
+import NotificationBell from './NotificationBell';
+import { User as UserIcon } from 'lucide-react'; // Importe o ícone de usuário
 
 export default function Navbar() {
-  const { isAuthenticated, logout, companyLogoUrl } = useAuth();
+  // 1. Puxe o objeto 'user' do contexto
+  const { isAuthenticated, user, logout, companyLogoUrl } = useAuth();
 
   return (
     <nav className="bg-background/80 backdrop-blur-sm border-b border-border p-4 sticky top-0 z-40">
@@ -33,8 +35,15 @@ export default function Navbar() {
               </div>
             )}
             
-            {/* 2. Adicionar o sino de notificações aqui */}
             <NotificationBell />
+
+            {/* 2. Adicione o nome do usuário aqui */}
+            {user && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground border-l border-border pl-4">
+                <UserIcon size={16} />
+                <span>{user.name}</span>
+              </div>
+            )}
 
             <button onClick={logout} className="btn-destructive">
               Sair

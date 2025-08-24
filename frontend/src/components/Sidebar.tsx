@@ -17,13 +17,13 @@ const navLinks = [
     name: 'Administração',
     icon: Settings,
     subLinks: [
-      { name: 'Gerenciar Empresa', href: '/admin/company', icon: Building },
-      { name: 'Gerenciar Templates', href: '/admin/templates', icon: FileText }, // <-- ADICIONE ESTA LINHA
-      { name: 'Gerenciar Usuários', href: '/admin/users', icon: Users },
-      { name: 'Gerenciar Perfis', href: '/admin/profiles', icon: Shield },
-      { name: 'Gerenciar Clientes', href: '/admin/clientes', icon: Users },
-      { name: 'Gerenciar Categorias', href: '/admin/categories', icon: Server },
-      { name: 'Gerenciar Contas de E-mail', href: '/admin/email-accounts', icon: Mail },
+      { name: 'Gerenciar Empresa', href: '/management/company', icon: Building },
+      { name: 'Gerenciar Templates', href: '/management/templates', icon: FileText }, // <-- ADICIONE ESTA LINHA
+      { name: 'Gerenciar Usuários', href: '/management/users', icon: Users },
+      { name: 'Gerenciar Perfis', href: '/management/profiles', icon: Shield },
+      { name: 'Gerenciar Clientes', href: '/management/clientes', icon: Users },
+      { name: 'Gerenciar Categorias', href: '/management/categories', icon: Server },
+      { name: 'Gerenciar Contas de E-mail', href: '/management/email-accounts', icon: Mail },
     ]
   },
   {

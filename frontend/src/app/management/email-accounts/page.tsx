@@ -1,4 +1,4 @@
-// Arquivo: frontend/src/app/admin/email-accounts/page.tsx
+// Arquivo: frontend/src/app/management/email-accounts/page.tsx
 "use client";
 
 import { useState, useEffect } from 'react';

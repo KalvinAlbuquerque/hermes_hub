@@ -1,4 +1,4 @@
-// Arquivo: frontend/src/app/admin/templates/page.tsx
+// Arquivo: frontend/src/app/management/templates/page.tsx
 "use client";
 
 import { useState, useEffect } from 'react';

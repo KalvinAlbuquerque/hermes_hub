@@ -106,15 +106,15 @@ function ManualPage() {
                         <DocSection title="Guia do Administrador" id="guia-admin">
                             <h3 className="text-xl font-semibold text-foreground">Gerenciando Usuários e Perfis</h3>
                             <p>
-                                Em <Link href="/admin/profiles" className="text-primary hover:underline">Gerenciar Perfis</Link>, você cria "cargos" com permissões específicas. Em <Link href="/admin/users" className="text-primary hover:underline">Gerenciar Usuários</Link>, você cria os usuários e atribui a eles um perfil, controlando o que cada um pode fazer.
+                                Em <Link href="/management/profiles" className="text-primary hover:underline">Gerenciar Perfis</Link>, você cria "cargos" com permissões específicas. Em <Link href="/management/users" className="text-primary hover:underline">Gerenciar Usuários</Link>, você cria os usuários e atribui a eles um perfil, controlando o que cada um pode fazer.
                             </p>
 
                             <h3 className="text-xl font-semibold text-foreground mt-6">Gerenciando Templates e Categorias de SLA</h3>
                             <p>
-                                Em <Link href="/admin/templates" className="text-primary hover:underline">Gerenciar Templates</Link>, você cria os modelos de e-mail. Utilize as variáveis (ex: `[*Assunto]`) para criar campos dinâmicos que serão preenchidos no momento do envio.
+                                Em <Link href="/management/templates" className="text-primary hover:underline">Gerenciar Templates</Link>, você cria os modelos de e-mail. Utilize as variáveis (ex: `[*Assunto]`) para criar campos dinâmicos que serão preenchidos no momento do envio.
                             </p>
                             <p>
-                                As <strong>Categorias de SLA</strong> (<Link href="/admin/categories" className="text-primary hover:underline">Gerenciar Categorias</Link>) são o cérebro por trás dos lembretes automáticos. Ao criar uma categoria, você define:
+                                As <strong>Categorias de SLA</strong> (<Link href="/management/categories" className="text-primary hover:underline">Gerenciar Categorias</Link>) são o cérebro por trás dos lembretes automáticos. Ao criar uma categoria, você define:
                             </p>
                             <ul>
                                 <li><strong>Modo de Lembrete:</strong> Se os lembretes serão enviados em intervalos de horas (ex: a cada 24h) ou em um horário específico todos os dias (ex: às 09:00).</li>
@@ -124,10 +124,10 @@ function ManualPage() {
 
                             <h3 className="text-xl font-semibold text-foreground mt-6">Configurando Contas de E-mail</h3>
                             <p>
-                                A tela de <Link href="/admin/email-accounts" className="text-primary hover:underline">Contas de E-mail</Link> é onde você cadastra as contas SMTP para **enviar** as notificações.
+                                A tela de <Link href="/management/email-accounts" className="text-primary hover:underline">Contas de E-mail</Link> é onde você cadastra as contas SMTP para **enviar** as notificações.
                             </p>
                             <p>
-                                A configuração da conta IMAP, para **ler e detectar respostas**, é feita na tela de <Link href="/admin/company" className="text-primary hover:underline">Gerenciar Empresa</Link>. É fundamental que esta conta seja configurada corretamente para que o fluxo de respostas funcione. Lembre-se de usar o botão "Testar Conexão" para validar as credenciais SMTP e IMAP.
+                                A configuração da conta IMAP, para **ler e detectar respostas**, é feita na tela de <Link href="/management/company" className="text-primary hover:underline">Gerenciar Empresa</Link>. É fundamental que esta conta seja configurada corretamente para que o fluxo de respostas funcione. Lembre-se de usar o botão "Testar Conexão" para validar as credenciais SMTP e IMAP.
                             </p>
                         </DocSection>
 
@@ -137,7 +137,7 @@ function ManualPage() {
                             </p>
                             <h3 className="text-xl font-semibold text-foreground mt-6">Permissões Disponíveis</h3>
                             <p>
-                                Ao criar ou editar um perfil em <Link href="/admin/profiles" className="text-primary hover:underline">Gerenciar Perfis</Link>, você pode conceder as seguintes permissões:
+                                Ao criar ou editar um perfil em <Link href="/management/profiles" className="text-primary hover:underline">Gerenciar Perfis</Link>, você pode conceder as seguintes permissões:
                             </p>
                             <ul>
                                 <li><strong>Gerenciar Usuários:</strong> Permite criar, editar e excluir usuários no sistema.</li>
@@ -150,7 +150,7 @@ function ManualPage() {
 
                         <DocSection title="Clientes" id="clientes">
                             <p>
-                                A seção de <Link href="/admin/clientes" className="text-primary hover:underline">Gerenciar Clientes</Link> funciona como uma agenda de contatos centralizada. O objetivo é agrupar múltiplos endereços de e-mail sob um único nome, simplificando o processo de envio.
+                                A seção de <Link href="/management/clientes" className="text-primary hover:underline">Gerenciar Clientes</Link> funciona como uma agenda de contatos centralizada. O objetivo é agrupar múltiplos endereços de e-mail sob um único nome, simplificando o processo de envio.
                             </p>
                             <ul>
                                 <li><strong>Agrupamento:</strong> Em vez de digitar vários e-mails toda vez, você pode simplesmente selecionar "Cliente X", e o sistema enviará a notificação para todos os e-mails cadastrados para ele.</li>
@@ -161,7 +161,7 @@ function ManualPage() {
                         {/* 2. NOVA SEÇÃO PARA A PÁGINA "GERENCIAR EMPRESA" */}
                         <DocSection title="Configurações da Empresa e Marca" id="config-empresa">
                             <p>
-                                A tela de <Link href="/admin/company" className="text-primary hover:underline">Gerenciar Empresa</Link> é onde você personaliza a identidade visual e configura os canais de comunicação centrais do Hermes Hub.
+                                A tela de <Link href="/management/company" className="text-primary hover:underline">Gerenciar Empresa</Link> é onde você personaliza a identidade visual e configura os canais de comunicação centrais do Hermes Hub.
                             </p>
                             <ul>
                                 <li><strong>Logótipo da Empresa:</strong> O logo enviado aqui é utilizado em locais chave para reforçar a identidade da sua marca:
@@ -253,7 +253,7 @@ function ManualPage() {
                             </p>
                             <h3 className="text-xl font-semibold text-foreground mt-6">Passo 2: Configurar a Conta de Envio (SMTP)</h3>
                             <p>
-                                Com a Senha de App em mãos, vá para <Link href="/admin/email-accounts" className="text-primary hover:underline">Administração &gt; Gerenciar Contas de E-mail</Link> no Hermes Hub e crie ou edite uma conta com os seguintes dados:
+                                Com a Senha de App em mãos, vá para <Link href="/management/email-accounts" className="text-primary hover:underline">Administração &gt; Gerenciar Contas de E-mail</Link> no Hermes Hub e crie ou edite uma conta com os seguintes dados:
                             </p>
                             <ul>
                                 <li><strong>Host SMTP:</strong> `smtp.gmail.com`</li>
