@@ -4,10 +4,10 @@ const authMiddleware = require('./middleware/auth');
 const ProfileController = require('./controllers/ProfileController');
 const UserController = require('./controllers/UserController');
 const AuditLogController = require('./controllers/AuditLogController');
-const ClienteController = require('./controllers/ClienteController'); 
+const ClienteController = require('./controllers/ClienteController');
 const ReportController = require('./controllers/ReportController');
 const EmailAccountController = require('./controllers/EmailAccountController');
-const CompanyController = require('./controllers/CompanyController'); 
+const CompanyController = require('./controllers/CompanyController');
 const CategoryController = require('./controllers/CategoryController');
 
 const adminRoutes = Router();
@@ -34,7 +34,7 @@ adminRoutes.delete('/clientes/:id', ClienteController.destroy)
 // Relatórios
 adminRoutes.get('/reports/audit-logs/csv', ReportController.generateAuditLogsCSV);
 adminRoutes.get('/reports/audit-logs/pdf', ReportController.generateAuditLogsPDF);
-adminRoutes.get('/reports/audit-logs/json', ReportController.generateAuditLogsJSON);
+
 // Contas de E-mail
 adminRoutes.post('/email-accounts', EmailAccountController.create);
 adminRoutes.get('/email-accounts', EmailAccountController.index);
@@ -46,8 +46,10 @@ adminRoutes.post('/email-accounts/test-connection', EmailAccountController.testC
 // Gestão da Empresa
 adminRoutes.get('/company/settings', CompanyController.getSettings);
 adminRoutes.post('/company/settings', CompanyController.updateSettings);
-adminRoutes.post('/company/logo', CompanyController.uploadLogo);
-adminRoutes.post('/company/test-imap', CompanyController.testImapConnection); // NOVA ROTA
+// --- CORREÇÃO AQUI ---
+// Primeiro, passamos o middleware de upload e depois a função que processa o resultado.
+adminRoutes.post('/company/logo', CompanyController.uploadMiddleware, CompanyController.processLogoUpload);
+adminRoutes.post('/company/test-imap', CompanyController.testImapConnection);
 
 // Categorias
 adminRoutes.post('/categories', CategoryController.create);

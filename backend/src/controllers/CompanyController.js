@@ -1,11 +1,11 @@
 // Arquivo: backend/src/controllers/CompanyController.js
 const multer = require('multer');
 const path = require('path');
-const Imap = require('node-imap'); // Importar o IMAP para o teste
+const Imap = require('node-imap');
 const prisma = require('../database/prisma');
 const { encrypt, decrypt } = require('../services/SettingsService');
 
-// Configuração do Multer (sem alterações)
+// Configuração do Multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) { cb(null, path.resolve(__dirname, '..', '..', 'public', 'uploads')); },
   filename: function (req, file, cb) {
@@ -13,19 +13,34 @@ const storage = multer.diskStorage({
     cb(null, 'logo-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
+
+// Middleware do Multer para ser usado nas rotas
 const upload = multer({ storage: storage }).single('logo');
 
+// Função que processa o arquivo após o upload
+async function processLogoUpload(request, response) {
+  if (!request.file) {
+    return response.status(400).json({ message: "Nenhum ficheiro enviado." });
+  }
+  const filePath = `/uploads/${request.file.filename}`;
+  try {
+    await prisma.systemSetting.upsert({
+      where: { key: 'companyLogo' },
+      update: { value: filePath },
+      create: { key: 'companyLogo', value: filePath }
+    });
+    return response.json({ message: "Logo enviado com sucesso!", filePath: filePath });
+  } catch (dbError) {
+    return response.status(500).json({ message: "Erro ao salvar o caminho do ficheiro no banco de dados." });
+  }
+}
+
 module.exports = {
+  // Mantemos as outras funções
   async getSettings(request, response) {
     try {
-        // 1. ADICIONAR AS NOVAS CHAVES AQUI
-        const settingKeys = [
-            'companyLogo', 'companyCCEmails', 
-            'imapHost', 'imapPort', 'imapUser', 'imapPassword', 'imapTls',
-            'pdfReportTitle', 'pdfFooterText', 'pdfWatermark'
-        ];
+        const settingKeys = ['companyLogo', 'companyCCEmails', 'imapHost', 'imapPort', 'imapUser', 'imapPassword', 'imapTls'];
         const settings = await prisma.systemSetting.findMany({ where: { key: { in: settingKeys } } });
-        
         const settingsMap = settings.reduce((acc, setting) => {
             if (setting.key === 'imapPassword' && setting.value) {
                 acc[setting.key] = decrypt(setting.value);
@@ -34,8 +49,6 @@ module.exports = {
             }
             return acc;
         }, {});
-
-        // 2. ADICIONAR OS NOVOS CAMPOS AO OBJETO DE RESPOSTA
         return response.json({
             logoUrl: settingsMap.companyLogo || null,
             companyCCEmails: settingsMap.companyCCEmails || '',
@@ -44,33 +57,20 @@ module.exports = {
             imapUser: settingsMap.imapUser || '',
             imapPassword: settingsMap.imapPassword || '',
             imapTls: settingsMap.imapTls ? settingsMap.imapTls === 'true' : true,
-            pdfReportTitle: settingsMap.pdfReportTitle || '',
-            pdfFooterText: settingsMap.pdfFooterText || '',
-            pdfWatermark: settingsMap.pdfWatermark ? settingsMap.pdfWatermark === 'true' : false
         });
     } catch (error) { return response.status(500).json({ message: "Erro ao buscar configurações da empresa." }); }
   },
 
-   async updateSettings(request, response) {
+  async updateSettings(request, response) {
     try {
-      // 3. OBTER OS NOVOS CAMPOS DO CORPO DA REQUISIÇÃO
-      const { 
-          companyCCEmails, imapHost, imapPort, imapUser, imapPassword, imapTls,
-          pdfReportTitle, pdfFooterText, pdfWatermark 
-      } = request.body;
-      
-      // 4. ADICIONAR OS NOVOS CAMPOS AO OBJETO QUE SERÁ SALVO
+      const { companyCCEmails, imapHost, imapPort, imapUser, imapPassword, imapTls } = request.body;
       const settingsToUpdate = {
           companyCCEmails: companyCCEmails || '',
           imapHost: imapHost || '',
           imapPort: imapPort || '993',
           imapUser: imapUser || '',
           imapTls: String(imapTls),
-          pdfReportTitle: pdfReportTitle || '',
-          pdfFooterText: pdfFooterText || '',
-          pdfWatermark: String(pdfWatermark)
       };
-
       if (imapPassword) {
           settingsToUpdate.imapPassword = encrypt(imapPassword);
       }
@@ -85,15 +85,13 @@ module.exports = {
     }
   },
 
-  // NOVA FUNÇÃO para testar a conexão IMAP
   async testImapConnection(request, response) {
     const { host, port, user, password, tls } = request.body;
     if (!host || !port || !user || !password) {
         return response.status(400).json({ message: 'Host, Porta, Usuário e Senha são obrigatórios para o teste.' });
     }
     const imap = new Imap({ user, password, host, port, tls });
-    
-    // Promessa para lidar com o timeout
+
     const connectionPromise = new Promise((resolve, reject) => {
         imap.once('ready', () => resolve());
         imap.once('error', err => reject(err));
@@ -101,7 +99,7 @@ module.exports = {
     });
 
     const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timed out while authenticating with server')), 10000); // Timeout de 10 segundos
+        setTimeout(() => reject(new Error('Timed out while authenticating with server')), 10000);
     });
 
     try {
@@ -113,15 +111,7 @@ module.exports = {
     }
   },
 
-  async uploadLogo(request, response) {
-    upload(request, response, async (err) => {
-      if (err) { return response.status(400).json({ message: "Erro no upload do ficheiro.", error: err }); }
-      if (!request.file) { return response.status(400).json({ message: "Nenhum ficheiro enviado." }); }
-      const filePath = `/uploads/${request.file.filename}`;
-      try {
-        await prisma.systemSetting.upsert({ where: { key: 'companyLogo' }, update: { value: filePath }, create: { key: 'companyLogo', value: filePath } });
-        return response.json({ message: "Logo enviado com sucesso!", filePath: filePath });
-      } catch (dbError) { return response.status(500).json({ message: "Erro ao salvar o caminho do ficheiro no banco de dados." }); }
-    });
-  },
+  // Exportamos o middleware e a função de processamento separadamente
+  uploadMiddleware: upload,
+  processLogoUpload,
 };
