@@ -70,20 +70,36 @@ async function addWatermark(doc) {
     const companyLogoSetting = await prisma.systemSetting.findUnique({
         where: { key: 'companyLogo' },
     });
+    // Não faz nada se a configuração do logo não existir ou estiver vazia
     if (!companyLogoSetting || !companyLogoSetting.value) return;
 
     const logoPath = path.join(__dirname, '..', '..', 'public', companyLogoSetting.value);
+    // Não faz nada se o arquivo do logo não for encontrado
     if (!fs.existsSync(logoPath)) return;
 
     const imageWidth = 250;
     const { width, height } = doc.page;
     const x = (width - imageWidth) / 2;
-    const y = (height - imageWidth) / 2;
+    const y = (height - imageWidth) / 2; // Centraliza a imagem
 
     const range = doc.bufferedPageRange();
     for (let i = range.start; i < range.count; i++) {
         doc.switchToPage(i);
-        doc.image(logoPath, x, y, { width: imageWidth, opacity: 0.02 }); // Opacidade bem baixa
+
+        // --- INÍCIO DA NOVA LÓGICA ---
+        // Salva o estado gráfico atual (cores, opacidade, etc.)
+        doc.save();
+
+        // Define uma opacidade global para os próximos elementos
+        // Altere o valor 0.05 para deixar mais ou menos transparente
+        doc.opacity(0.2);
+
+        // Desenha a imagem. Ela será afetada pela opacidade definida acima.
+        doc.image(logoPath, x, y, { width: imageWidth });
+
+        // Restaura o estado gráfico para o normal (opacidade volta para 100%)
+        doc.restore();
+        // --- FIM DA NOVA LÓGICA ---
     }
 }
 // Gerar relatório de logs de auditoria em CSV
