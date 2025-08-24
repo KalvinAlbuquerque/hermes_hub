@@ -11,6 +11,12 @@ services:
       - "5432:5432"
     volumes:
       - hermes_db_data:/var/lib/postgresql/data
+    # ADICIONADO: Garante que o banco esteja pronto para receber conexões
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     container_name: hermes_backend
@@ -24,11 +30,13 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
-      - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY} 
+      - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY}
       - BACKEND_URL=${BACKEND_URL}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    # ALTERADO: Agora espera o 'healthcheck' do banco passar
     depends_on:
-      - database
+      database:
+        condition: service_healthy
 
   frontend:
     container_name: hermes_frontend
@@ -39,12 +47,10 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # A linha abaixo foi comentada para usar o código construído DENTRO da imagem
-      # - ./frontend:/usr/app
       - /usr/app/node_modules
       - /usr/app/.next
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} 
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     depends_on:
       - backend
 

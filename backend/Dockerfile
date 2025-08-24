@@ -9,15 +9,22 @@ WORKDIR /usr/app
 # 3. Copiamos os arquivos de definição do projeto.
 COPY package*.json ./
 
-# 4. Instalamos as dependências. O script 'postinstall' foi removido,
-# então isso apenas instalará os pacotes.
+# 4. Instalamos as dependências.
 RUN npm install
 
-# 5. AGORA, copiamos o RESTO do código, incluindo a pasta 'prisma'.
+# 5. Copiamos o RESTO do código, incluindo a pasta 'prisma'.
 COPY . .
 
-# 6. E SÓ AGORA, com tudo no lugar, geramos o cliente Prisma.
+# 6. Geramos o cliente Prisma.
 RUN npx prisma generate
 
-# 7. Definimos o comando padrão para iniciar.
-CMD [ "npm", "start"]
+# 7. Copia o script de entrypoint
+COPY entrypoint.sh .
+# 8. Garante que o script é executável DENTRO do container
+RUN chmod +x ./entrypoint.sh
+
+# 9. Define o entrypoint para ser executado com 'sh'
+ENTRYPOINT ["sh", "./entrypoint.sh"]
+
+# 10. Define o comando padrão para iniciar.
+CMD ["npm", "start"]
