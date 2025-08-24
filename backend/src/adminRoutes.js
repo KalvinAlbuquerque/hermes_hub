@@ -34,7 +34,7 @@ adminRoutes.delete('/clientes/:id', ClienteController.destroy)
 // Relatórios
 adminRoutes.get('/reports/audit-logs/csv', ReportController.generateAuditLogsCSV);
 adminRoutes.get('/reports/audit-logs/pdf', ReportController.generateAuditLogsPDF);
-
+adminRoutes.get('/reports/audit-logs/json', ReportController.generateAuditLogsJSON);
 // Contas de E-mail
 adminRoutes.post('/email-accounts', EmailAccountController.create);
 adminRoutes.get('/email-accounts', EmailAccountController.index);

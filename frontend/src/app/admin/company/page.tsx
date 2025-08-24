@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Upload } from 'lucide-react';
 
+// 1. ATUALIZAR A INTERFACE PARA INCLUIR AS NOVAS PROPRIEDADES
 interface CompanySettings {
   companyCCEmails: string;
   imapHost: string;
@@ -15,6 +16,9 @@ interface CompanySettings {
   imapUser: string;
   imapPassword?: string;
   imapTls: boolean;
+  pdfReportTitle?: string;
+  pdfFooterText?: string;
+  pdfWatermark?: boolean;
 }
 
 function CompanySettingsPage() {
@@ -22,6 +26,8 @@ function CompanySettingsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // 2. ATUALIZAR O ESTADO INICIAL
   const [settings, setSettings] = useState<CompanySettings>({
     companyCCEmails: '',
     imapHost: '',
@@ -29,6 +35,9 @@ function CompanySettingsPage() {
     imapUser: '',
     imapPassword: '',
     imapTls: true,
+    pdfReportTitle: '',
+    pdfFooterText: '',
+    pdfWatermark: false,
   });
 
   useEffect(() => {
@@ -39,6 +48,7 @@ function CompanySettingsPage() {
         if (response.data.logoUrl) {
           setLogoUrl(`http://localhost:3333/files${response.data.logoUrl}`);
         }
+        // 3. ATUALIZAR O SETTINGS PARA CARREGAR OS NOVOS DADOS DA API
         setSettings({
           companyCCEmails: response.data.companyCCEmails || '',
           imapHost: response.data.imapHost || '',
@@ -46,6 +56,9 @@ function CompanySettingsPage() {
           imapUser: response.data.imapUser || '',
           imapPassword: '',
           imapTls: response.data.imapTls !== false,
+          pdfReportTitle: response.data.pdfReportTitle || '',
+          pdfFooterText: response.data.pdfFooterText || '',
+          pdfWatermark: response.data.pdfWatermark === true || response.data.pdfWatermark === 'true',
         });
       } catch (error) {
         toast.error("Falha ao carregar as configurações da empresa.");
@@ -113,11 +126,13 @@ function CompanySettingsPage() {
     }
   };
 
+  // O return que você pediu, agora sem erros
   return (
     <DashboardLayout>
       <div className="card max-w-4xl mx-auto">
         <h2 className="text-xl font-semibold text-foreground mb-6">Gerenciar Marca e E-mails</h2>
         <div className="space-y-8">
+          {/* Seção do Logótipo */}
           <div>
             <h3 className="text-lg font-medium text-muted-foreground">Logótipo da Empresa</h3>
             <div className="mt-2 p-4 border border-border rounded-md bg-background flex justify-center items-center h-40">
@@ -132,11 +147,34 @@ function CompanySettingsPage() {
               </label>
             </div>
           </div>
+
+          {/* Seção de E-mails em Cópia */}
           <div>
               <h3 className="text-lg font-medium text-muted-foreground">E-mails em Cópia (CC)</h3>
               <p className="text-xs text-muted-foreground mt-1 mb-2">Estes e-mails receberão uma cópia de todas as notificações iniciais enviadas.</p>
               <textarea name="companyCCEmails" value={settings.companyCCEmails} onChange={handleSettingsChange} className="input-style" rows={3} placeholder="gestor1@empresa.com, diretor@empresa.com" />
           </div>
+          
+          {/* Seção de Customização de PDF */}
+          <div className="border-t border-border pt-8">
+            <h3 className="text-lg font-medium text-muted-foreground">Customização de Relatórios PDF</h3>
+            <div className="mt-4 space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Título Padrão do Relatório</label>
+                    <input type="text" name="pdfReportTitle" value={settings.pdfReportTitle || ''} onChange={handleSettingsChange} className="input-style" placeholder="Relatório de Atividades" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Texto do Rodapé</label>
+                    <input type="text" name="pdfFooterText" value={settings.pdfFooterText || ''} onChange={handleSettingsChange} className="input-style" placeholder="Documento Confidencial" />
+                </div>
+                <div className="flex items-center">
+                    <input id="pdfWatermark" name="pdfWatermark" type="checkbox" checked={settings.pdfWatermark || false} onChange={handleSettingsChange} className="h-4 w-4 text-primary bg-input border-border rounded focus:ring-ring" />
+                    <label htmlFor="pdfWatermark" className="ml-2 text-sm text-foreground">Usar logótipo como marca d'água nos relatórios</label>
+                </div>
+            </div>
+          </div>
+
+          {/* Seção de Configurações IMAP */}
           <div className="border-t border-border pt-8">
             <h3 className="text-lg font-medium text-muted-foreground">Configurações IMAP (Leitura de Respostas)</h3>
             <p className="text-xs text-muted-foreground mt-1 mb-4">Configure a conta de e-mail que receberá as respostas encaminhadas para que o Hermes possa detectá-las.</p>
@@ -167,6 +205,8 @@ function CompanySettingsPage() {
             </div>
           </div>
         </div>
+        
+        {/* Botão de Salvar */}
         <div className="flex justify-end mt-8 border-t border-border pt-6">
             <button onClick={handleSaveSettings} className="btn-primary">Salvar Todas as Alterações</button>
         </div>

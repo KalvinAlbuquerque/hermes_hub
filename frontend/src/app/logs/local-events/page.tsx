@@ -19,7 +19,7 @@ interface AuditLog {
 }
 interface User {
   id: string;
-  name:string;
+  name: string;
 }
 
 const getActionIcon = (action: string) => {
@@ -66,7 +66,7 @@ function LocalEventsPage() {
         pageSize: '15',
         ...currentFilters,
       }).toString();
-      
+
       const response = await api.get(`/audit-logs?${params}`);
       setLogs(response.data.data);
       setTotalPages(response.data.totalPages);
@@ -80,18 +80,18 @@ function LocalEventsPage() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-        try {
-            const [usersResponse, actionsResponse] = await Promise.all([
-                api.get('/users'),
-                api.get('/audit-logs/actions')
-            ]);
-            setUsers(usersResponse.data);
-            setDistinctActions(actionsResponse.data);
-            await fetchLogs(1);
-        } catch (error) {
-            toast.error('Falha ao carregar dados iniciais da página.');
-            setLoading(false);
-        }
+      try {
+        const [usersResponse, actionsResponse] = await Promise.all([
+          api.get('/users'),
+          api.get('/audit-logs/actions')
+        ]);
+        setUsers(usersResponse.data);
+        setDistinctActions(actionsResponse.data);
+        await fetchLogs(1);
+      } catch (error) {
+        toast.error('Falha ao carregar dados iniciais da página.');
+        setLoading(false);
+      }
     };
     fetchInitialData();
   }, []);
@@ -111,7 +111,7 @@ function LocalEventsPage() {
     fetchLogs(1, clearedFilters);
   };
 
-  const handleExport = async (format: 'csv' | 'pdf') => {
+  const handleExport = async (format: 'csv' | 'pdf' | 'json') => {
     toast.loading(`Gerando o seu relatório ${format.toUpperCase()}...`, { id: 'export-toast' });
     const params = new URLSearchParams(filters).toString();
     const url = `/reports/audit-logs/${format}?${params}`;
@@ -129,7 +129,7 @@ function LocalEventsPage() {
     setSelectedLog(log);
     setIsModalOpen(true);
   };
-  
+
   return (
     <DashboardLayout>
       <div className="card">
@@ -140,7 +140,7 @@ function LocalEventsPage() {
             {filtersVisible ? 'Esconder Filtros' : 'Mostrar Filtros'}
           </button>
         </div>
-        
+
         {filtersVisible && (
           <div className="bg-secondary/30 p-4 rounded-md mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -156,30 +156,31 @@ function LocalEventsPage() {
               <div>
                 <label htmlFor="action" className="block text-sm font-medium text-muted-foreground">Ação</label>
                 <select id="action" name="action" value={filters.action} onChange={handleFilterChange} className="input-style">
-                    <option value="">Todas as Ações</option>
-                    {distinctActions.map(actionName => (
-                        <option key={actionName} value={actionName}>{actionName}</option>
-                    ))}
+                  <option value="">Todas as Ações</option>
+                  {distinctActions.map(actionName => (
+                    <option key={actionName} value={actionName}>{actionName}</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label htmlFor="startDate" className="block text-sm font-medium text-muted-foreground">Data Início</label>
-                <input type="date" id="startDate" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="input-style"/>
+                <input type="date" id="startDate" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="input-style" />
               </div>
               <div>
                 <label htmlFor="endDate" className="block text-sm font-medium text-muted-foreground">Data Fim</label>
-                <input type="date" id="endDate" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="input-style"/>
+                <input type="date" id="endDate" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="input-style" />
               </div>
               <div className="col-span-1 lg:col-span-4 flex justify-end items-end gap-2 mt-2">
                 <button onClick={() => handleExport('csv')} className="btn-secondary">Exportar CSV</button>
                 <button onClick={() => handleExport('pdf')} className="btn-secondary">Exportar PDF</button>
+                <button onClick={() => handleExport('json')} className="btn-secondary">Exportar JSON</button>
                 <button onClick={handleClearFilters} className="btn-secondary">Limpar</button>
                 <button onClick={handleApplyFilters} className="btn-primary">Filtrar</button>
               </div>
             </div>
           </div>
         )}
-        
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-secondary/50">
@@ -245,7 +246,7 @@ function LocalEventsPage() {
               </pre>
             </div>
             <div className="flex justify-end pt-4">
-                <button onClick={() => setIsModalOpen(false)} className="btn-secondary">Fechar</button>
+              <button onClick={() => setIsModalOpen(false)} className="btn-secondary">Fechar</button>
             </div>
           </div>
         )}

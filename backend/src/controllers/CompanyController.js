@@ -18,8 +18,14 @@ const upload = multer({ storage: storage }).single('logo');
 module.exports = {
   async getSettings(request, response) {
     try {
-        const settingKeys = ['companyLogo', 'companyCCEmails', 'imapHost', 'imapPort', 'imapUser', 'imapPassword', 'imapTls'];
+        // 1. ADICIONAR AS NOVAS CHAVES AQUI
+        const settingKeys = [
+            'companyLogo', 'companyCCEmails', 
+            'imapHost', 'imapPort', 'imapUser', 'imapPassword', 'imapTls',
+            'pdfReportTitle', 'pdfFooterText', 'pdfWatermark'
+        ];
         const settings = await prisma.systemSetting.findMany({ where: { key: { in: settingKeys } } });
+        
         const settingsMap = settings.reduce((acc, setting) => {
             if (setting.key === 'imapPassword' && setting.value) {
                 acc[setting.key] = decrypt(setting.value);
@@ -28,6 +34,8 @@ module.exports = {
             }
             return acc;
         }, {});
+
+        // 2. ADICIONAR OS NOVOS CAMPOS AO OBJETO DE RESPOSTA
         return response.json({
             logoUrl: settingsMap.companyLogo || null,
             companyCCEmails: settingsMap.companyCCEmails || '',
@@ -36,20 +44,33 @@ module.exports = {
             imapUser: settingsMap.imapUser || '',
             imapPassword: settingsMap.imapPassword || '',
             imapTls: settingsMap.imapTls ? settingsMap.imapTls === 'true' : true,
+            pdfReportTitle: settingsMap.pdfReportTitle || '',
+            pdfFooterText: settingsMap.pdfFooterText || '',
+            pdfWatermark: settingsMap.pdfWatermark ? settingsMap.pdfWatermark === 'true' : false
         });
     } catch (error) { return response.status(500).json({ message: "Erro ao buscar configurações da empresa." }); }
   },
 
-  async updateSettings(request, response) {
+   async updateSettings(request, response) {
     try {
-      const { companyCCEmails, imapHost, imapPort, imapUser, imapPassword, imapTls } = request.body;
+      // 3. OBTER OS NOVOS CAMPOS DO CORPO DA REQUISIÇÃO
+      const { 
+          companyCCEmails, imapHost, imapPort, imapUser, imapPassword, imapTls,
+          pdfReportTitle, pdfFooterText, pdfWatermark 
+      } = request.body;
+      
+      // 4. ADICIONAR OS NOVOS CAMPOS AO OBJETO QUE SERÁ SALVO
       const settingsToUpdate = {
           companyCCEmails: companyCCEmails || '',
           imapHost: imapHost || '',
           imapPort: imapPort || '993',
           imapUser: imapUser || '',
           imapTls: String(imapTls),
+          pdfReportTitle: pdfReportTitle || '',
+          pdfFooterText: pdfFooterText || '',
+          pdfWatermark: String(pdfWatermark)
       };
+
       if (imapPassword) {
           settingsToUpdate.imapPassword = encrypt(imapPassword);
       }

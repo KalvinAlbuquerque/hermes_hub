@@ -18,6 +18,7 @@ logRoutes.post('/logs/notifications/mark-replies-as-read', NotificationLogContro
 logRoutes.get('/logs/notifications/:id', NotificationLogController.show);
 logRoutes.get('/logs/notifications/export/csv', ReportController.generateNotificationLogsCSV);
 logRoutes.get('/logs/notifications/export/pdf', ReportController.generateNotificationLogsPDF);
+logRoutes.get('/logs/notifications/export/json', ReportController.generateNotificationLogsJSON);
 logRoutes.post('/logs/notifications/:id/close', NotificationLogController.closeIncident);
 logRoutes.get('/logs/notifications/:id/reminders', NotificationLogController.getReminders);
 logRoutes.post('/logs/notifications/:id/pause', NotificationLogController.pauseIncident);
