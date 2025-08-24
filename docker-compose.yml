@@ -30,5 +30,23 @@ services:
     depends_on:
       - database
 
+  frontend:
+    container_name: hermes_frontend
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    ports:
+      - "3000:3000"
+    volumes:
+      # A linha abaixo foi comentada para usar o código construído DENTRO da imagem
+      # - ./frontend:/usr/app
+      - /usr/app/node_modules
+      - /usr/app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} 
+    depends_on:
+      - backend
+
 volumes:
   hermes_db_data:

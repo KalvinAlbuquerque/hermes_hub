@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import axios from 'axios';
+import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image'; // Importe o componente Image do Next.js
@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  
+
   const router = useRouter();
   const { login } = useAuth();
 
@@ -20,14 +20,14 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:3333/login', {
+      const response = await api.post('/login', {
         email,
         password,
       });
 
       if (response.data.token) {
         login(response.data.token);
-        router.push('/dashboard'); 
+        router.push('/dashboard');
       }
 
     } catch (err: any) {
@@ -44,19 +44,19 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       {/* Usa a classe .card para o container do formulário, e ajusta a largura */}
       <div className="card w-full max-w-md">
-        
+
         {/* Adiciona a imagem do logo */}
         <div className="flex justify-center mb-6">
-            <Image 
-                src="/hermes-logo-glow.png" // Caminho para a nova imagem na pasta /public
-                alt="Hermes Hub Logo"
-                width={200} // Ajuste a largura conforme necessário
-                height={200} // Ajuste a altura conforme necessário
-                priority // Ajuda a carregar a imagem principal mais rápido
-            />
+          <Image
+            src="/hermes-logo-glow.png" // Caminho para a nova imagem na pasta /public
+            alt="Hermes Hub Logo"
+            width={200} // Ajuste a largura conforme necessário
+            height={200} // Ajuste a altura conforme necessário
+            priority // Ajuda a carregar a imagem principal mais rápido
+          />
         </div>
 
-{/*         <h1 className="text-2xl font-bold text-center text-foreground mb-6">
+        {/*         <h1 className="text-2xl font-bold text-center text-foreground mb-6">
           Hermes Hub Login
         </h1>
          */}

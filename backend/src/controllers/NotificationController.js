@@ -85,6 +85,7 @@ module.exports = {
       emailAccountId: emailAccountId,
       attachments: attachmentsForDb,
       nextReminderAt: firstReminderDate,
+      senderHasReadReply: false, 
       ...clienteConnectData,
     };
 
@@ -233,7 +234,7 @@ module.exports = {
     if (companyEmailsSetting && companyEmailsSetting.value) {
       ccEmails = companyEmailsSetting.value.split(',').map(email => email.trim()).filter(Boolean);
     }
-    
+
     // O envio agora acontece para o primeiro destinatário para pegar o Message-ID
     const firstRecipient = notification.recipients[0];
     if (!firstRecipient) return;
@@ -268,7 +269,7 @@ module.exports = {
         });
       }
     } else {
-        throw new Error("Falha ao enviar e-mail principal ou obter Message-ID.");
+      throw new Error("Falha ao enviar e-mail principal ou obter Message-ID.");
     }
   },
 

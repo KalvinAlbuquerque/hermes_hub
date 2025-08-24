@@ -20,4 +20,4 @@ COPY . .
 RUN npx prisma generate
 
 # 7. Definimos o comando padrão para iniciar.
-CMD [ "npm", "run", "dev" ]
+CMD [ "npm", "start"]

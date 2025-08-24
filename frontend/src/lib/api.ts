@@ -13,7 +13,7 @@ const getCookie = (name: string) => {
 };
 
 const api = axios.create({
-  baseURL: 'http://localhost:3333',
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
 
 // Isso é um "Interceptor". Ele intercepta TODA requisição antes de ser enviada

@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           const response = await api.get('/company/settings');
           if (response.data.logoUrl) {
-            setCompanyLogoUrl(`http://localhost:3333/files${response.data.logoUrl}`);
+            setCompanyLogoUrl(`${process.env.NEXT_PUBLIC_API_URL}/files${response.data.logoUrl}`);
           }
         } catch (error) {
           console.error("Falha ao buscar o logótipo da empresa.", error);
