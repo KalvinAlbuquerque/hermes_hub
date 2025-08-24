@@ -4,8 +4,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { LayoutDashboard, Send, Users, Shield, FileText, Settings, CheckSquare, History, ChevronDown, Monitor, Mail, Building, ShieldAlert, 
-  Activity, Server } from 'lucide-react';
+import {
+  LayoutDashboard, Send, Users, Shield, FileText, Settings, CheckSquare, History, ChevronDown, Monitor, Mail, Building, ShieldAlert,
+  Activity, Server, HelpCircle
+} from 'lucide-react';
 
 // A estrutura de dados permanece a mesma
 const navLinks = [
@@ -33,6 +35,7 @@ const navLinks = [
     ]
   },
   { name: 'Aprovações', href: '/approvals', icon: CheckSquare },
+  { name: 'Manual de Uso', href: '/manual', icon: HelpCircle },
 ];
 
 // Componente para um único link (sem alterações)

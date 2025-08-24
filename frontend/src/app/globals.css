@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  /* --- ADIÇÃO AQUI --- */
+  html {
+    @apply scroll-smooth;
+  }
+
   /* Força o tema escuro como padrão */
   :root, .dark {
     --background: #0D1117;
@@ -13,6 +18,7 @@
     --muted-foreground: #8D96A0;
   }
 }
+
 
 @layer base {
   body {
