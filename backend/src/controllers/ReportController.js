@@ -218,13 +218,20 @@ async function getFilteredNotificationLogs(queryParams) {
         where,
         orderBy: { createdAt: 'desc' },
         include: {
-            template: { select: { name: true } },
+            // --- ALTERAÇÃO AQUI: Incluindo a categoria do template ---
+            template: { 
+              select: { 
+                name: true,
+                category: { select: { name: true }}
+              } 
+            },
             submittedByUser: { select: { name: true } },
             approvedByUser: { select: { name: true } },
             clientes: { select: { name: true } },
         },
     });
 }
+
 
 // Gerar relatório de notificações em CSV
 module.exports.generateNotificationLogsCSV = async (request, response) => {
@@ -234,6 +241,7 @@ module.exports.generateNotificationLogsCSV = async (request, response) => {
             Data: new Date(log.createdAt).toLocaleString('pt-BR'),
             Assunto: log.subject,
             Template: log.template.name,
+            Categoria: log.template.category?.name || 'N/A', // <-- NOVA COLUNA
             Status: log.status,
             EnviadoPor: log.submittedByUser.name,
             AprovadoPor: log.approvedByUser?.name || 'N/A',
@@ -259,57 +267,76 @@ module.exports.generateNotificationLogsPDF = async (request, response) => {
         response.header('Content-Type', 'application/pdf');
         doc.pipe(response);
 
-        await addHeader(doc);
+        // --- As funções de cabeçalho, rodapé e marca d'água são reutilizadas ---
+        await addHeader(doc); 
 
         doc.fontSize(16).font('Helvetica-Bold').text('Relatório de Notificações', { align: 'center' });
         doc.moveDown(2);
 
+        // --- LAYOUT DA TABELA COMPLETAMENTE REFEITO ---
         const tableTop = doc.y;
         const columnSpacing = 10;
+        
+        // Definição das posições e larguras das colunas
         const dateX = doc.page.margins.left;
-        const subjectX = dateX + 90 + columnSpacing;
-        const templateX = subjectX + 150 + columnSpacing;
-        const sentByX = templateX + 90 + columnSpacing;
-        const statusX = sentByX + 110 + columnSpacing;
-        const clientsX = statusX + 60 + columnSpacing;
+        const subjectX = dateX + 90;
+        const templateX = subjectX + 150;
+        const categoryX = templateX + 90;
+        const sentByX = categoryX + 90;
+        const statusX = sentByX + 90;
+        const clientsX = statusX + 50;
+
+        const dateWidth = 80;
+        const subjectWidth = 140;
+        const templateWidth = 80;
+        const categoryWidth = 80;
+        const sentByWidth = 80;
+        const statusWidth = 40;
         const clientsWidth = doc.page.width - doc.page.margins.right - clientsX;
 
-        doc.font('Helvetica-Bold').fontSize(10);
-        doc.text('Data', dateX, tableTop, { continued: true });
-        doc.text('Assunto', subjectX, tableTop, { continued: true });
-        doc.text('Template', templateX, tableTop, { continued: true });
-        doc.text('Enviado Por', sentByX, tableTop, { continued: true });
-        doc.text('Status', statusX, tableTop, { continued: true });
+        // Cabeçalhos da Tabela
+        doc.font('Helvetica-Bold').fontSize(9);
+        doc.text('Data', dateX, tableTop);
+        doc.text('Assunto', subjectX, tableTop);
+        doc.text('Template', templateX, tableTop);
+        doc.text('Categoria', categoryX, tableTop);
+        doc.text('Enviado Por', sentByX, tableTop);
+        doc.text('Status', statusX, tableTop);
         doc.text('Clientes', clientsX, tableTop);
-        doc.moveDown();
+        doc.moveDown(0.5);
 
+        // Linha divisória
         doc.strokeColor("#cccccc").lineWidth(1).moveTo(dateX, doc.y).lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke();
         doc.moveDown();
 
-        doc.font('Helvetica').fontSize(9);
-
+        // Conteúdo da Tabela
+        doc.font('Helvetica').fontSize(8);
         for (const log of logs) {
             const clientsText = log.clientes.map(c => c.name).join(', ');
+            // Calcula a altura da linha com base no maior texto
             const rowHeight = Math.max(
-                doc.heightOfString(log.subject, { width: 150 }),
-                doc.heightOfString(clientsText, { width: clientsWidth })
+                doc.heightOfString(log.subject, { width: subjectWidth }),
+                doc.heightOfString(clientsText, { width: clientsWidth }),
+                15 // Altura mínima
             );
+
+            // Adiciona nova página se não houver espaço
             if (doc.y + rowHeight > doc.page.height - doc.page.margins.bottom) {
                 doc.addPage();
             }
 
             const y = doc.y;
-            doc.text(new Date(log.createdAt).toLocaleString('pt-BR'), dateX, y, { width: 90 });
-            doc.text(log.subject, subjectX, y, { width: 150 });
-            doc.text(log.template.name, templateX, y, { width: 90 });
-            doc.text(log.submittedByUser.name, sentByX, y, { width: 110 });
-            doc.text(log.status, statusX, y, { width: 60 });
+            doc.text(new Date(log.createdAt).toLocaleString('pt-BR'), dateX, y, { width: dateWidth });
+            doc.text(log.subject, subjectX, y, { width: subjectWidth });
+            doc.text(log.template.name, templateX, y, { width: templateWidth });
+            doc.text(log.template.category?.name || 'N/A', categoryX, y, { width: categoryWidth });
+            doc.text(log.submittedByUser.name, sentByX, y, { width: sentByWidth });
+            doc.text(log.status, statusX, y, { width: statusWidth });
             doc.text(clientsText, clientsX, y, { width: clientsWidth });
 
-            doc.y += rowHeight + 10;
-            doc.strokeColor("#eeeeee").lineWidth(0.5).moveTo(dateX, doc.y).lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke();
-            doc.moveDown(2);
+            doc.y += rowHeight + 5; // Pula para a próxima linha
         }
+        // --- FIM DO LAYOUT REFEITO ---
 
         await addWatermark(doc);
         addFooter(doc);
