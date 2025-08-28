@@ -83,7 +83,12 @@ const processScheduledReminders = async () => {
 
       // Substitui o placeholder no corpo e no assunto do e-mail
       const finalHtmlBody = category.reminderTemplateBody.replace(/\[PROTOCOLO\]/g, protocol);
-      const finalSubject = `[LEMBRETE] Pendência em Aberto: ${incident.subject}`.replace(/\[PROTOCOLO\]/g, protocol);
+      
+      // --- CORREÇÃO APLICADA AQUI ---
+      const finalSubject = category.reminderSubject
+        .replace(/\[PROTOCOLO\]/g, protocol)
+        .replace(/\[ASSUNTO\]/g, incident.subject);
+      // --- FIM DA CORREÇÃO ---
 
       // Envia o e-mail usando o corpo do template da categoria
       await sendMail({
