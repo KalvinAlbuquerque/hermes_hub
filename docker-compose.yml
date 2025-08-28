@@ -7,8 +7,6 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-    ports:
-      - "5432:5432"
     volumes:
       - hermes_db_data:/var/lib/postgresql/data
     # ADICIONADO: Garante que o banco esteja pronto para receber conexões
@@ -22,8 +20,6 @@ services:
     container_name: hermes_backend
     build:
       context: ./backend
-    ports:
-      - "3333:3333"
     volumes:
       - ./backend:/usr/app
       - /usr/app/node_modules

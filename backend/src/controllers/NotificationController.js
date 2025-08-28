@@ -4,6 +4,13 @@ const { sendMail } = require('../services/EmailService');
 const { logAction } = require('../services/AuditLogService');
 const path = require('path');
 const { calculateNextReminder } = require('../services/CronService');
+
+const cleanMessageId = (idString) => {
+    if (!idString) return null;
+    const match = idString.match(/<([^>]+)>/);
+    return match ? match[1] : idString;
+};
+
 module.exports = {
   // ... (a função index não muda)
   async index(request, response) {
@@ -85,7 +92,7 @@ module.exports = {
       emailAccountId: emailAccountId,
       attachments: attachmentsForDb,
       nextReminderAt: firstReminderDate,
-      senderHasReadReply: false, 
+      senderHasReadReply: false,
       ...clienteConnectData,
     };
 
@@ -248,13 +255,15 @@ module.exports = {
       attachments: finalAttachments,
       // Passamos o notificationId para o cabeçalho In-Reply-To nos lembretes
     });
-
+    console.log(`[DEBUG] Resultado do envio para ${firstRecipient} (Protocolo: ${notification.protocol}):`, result);
     // Se o envio principal foi bem-sucedido e temos um messageId, salvamos e enviamos para os outros
     if (result.success && result.messageId) {
+      console.log(`[DEBUG] Message-ID ${result.messageId} será guardado para o protocolo ${notification.protocol}.`);
       await prisma.notificationLog.update({
         where: { id: notification.id },
-        data: { messageId: result.messageId },
+        data: { messageId: cleanMessageId(result.messageId) }, // <-- APLIQUE A FUNÇÃO AQUI
       });
+
 
       // Envia para os destinatários restantes, se houver
       const remainingRecipients = notification.recipients.slice(1);
