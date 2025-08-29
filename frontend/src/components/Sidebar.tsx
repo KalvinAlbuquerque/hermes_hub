@@ -6,14 +6,16 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard, Send, Users, Shield, FileText, Settings, CheckSquare, History, ChevronDown, Monitor, Mail, Building, ShieldAlert,
-  Activity, Server, HelpCircle
+  Activity, Server, HelpCircle, FileBarChart
 } from 'lucide-react';
 
 // A estrutura de dados permanece a mesma
 const navLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Enviar Notificação', href: '/send', icon: Send },
-  { name: 'Gerenciar Incidentes', href: '/incidents', icon: Activity }, {
+  { name: 'Gerenciar Incidentes', href: '/incidents', icon: Activity }, 
+  { name: 'Relatórios', href: '/reports', icon: FileBarChart }, 
+  {
     name: 'Administração',
     icon: Settings,
     subLinks: [
