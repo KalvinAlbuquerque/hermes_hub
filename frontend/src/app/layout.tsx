@@ -24,8 +24,12 @@ export default function RootLayout({
         <AuthProvider>
           <ThemeProvider>
             <Toaster position="top-right" />
-            <Navbar /> {/* A Navbar vive aqui, no topo de tudo */}
-            {children} {/* As páginas (incluindo o DashboardLayout) serão renderizadas aqui */}
+            <Navbar />
+            <main className="flex-1 overflow-y-auto">{children}</main> {/* Envolve o children com o main */}
+            <footer className="w-full bg-background border-t border-border p-4 text-center text-xs text-muted-foreground">
+              <p>© {new Date().getFullYear()} Hermes Hub | Todos os direitos reservados.</p>
+              <p>Desenvolvido por: Kalvin Albuquerque, Natan Santos & Tainá Sacramento.</p>
+            </footer>
           </ThemeProvider>
         </AuthProvider>
       </body>
