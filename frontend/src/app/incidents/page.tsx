@@ -292,7 +292,7 @@ function ManageIncidentsPage() {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto-y-visible">
+                <div className="overflow-visible">
                     <table className="min-w-full divide-y divide-border">
                         <thead className="bg-secondary/50">
                             <tr>

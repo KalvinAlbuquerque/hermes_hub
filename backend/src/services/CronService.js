@@ -81,17 +81,20 @@ const processScheduledReminders = async () => {
 
       const protocol = incident.protocol || `HERMES-${incident.id.substring(0, 8).toUpperCase()}`;
 
-      // Substitui o placeholder no corpo e no assunto do e-mail
+      // Substitui o placeholder no corpo do e-mail
       const finalHtmlBody = category.reminderTemplateBody.replace(/\[PROTOCOLO\]/g, protocol);
 
       // --- CORREÇÃO APLICADA AQUI ---
+      // Garanta que seu código realize a substituição em `category.reminderSubject`
+      // e substitua AMBAS as variáveis: [ASSUNTO] e [PROTOCOLO].
       const finalSubject = category.reminderSubject
-        .replace(/\[ASSUNTO\]/gi, incident.subject)      // 1. Primeiro substitui o [ASSUNTO]
+        .replace(/\[ASSUNTO\]/gi, incident.subject)
         .replace(/\[PROTOCOLO\]/gi, protocol);
+
       // Envia o e-mail usando o corpo do template da categoria
       await sendMail({
         to: incident.recipients,
-        subject: finalSubject,
+        subject: finalSubject, // <-- A variável corrigida é usada aqui
         html: finalHtmlBody,
         accountId: incident.emailAccountId,
       });
