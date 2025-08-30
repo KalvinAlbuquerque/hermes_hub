@@ -88,6 +88,11 @@ function ManageTemplatesPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+     if (!formData.categoryId) {
+      toast.error("Selecione uma categoria.");
+      return; // Impede o envio do formulário se a categoria não for selecionada.
+    }
     const promise = editingTemplateId
       ? api.put(`/templates/${editingTemplateId}`, formData)
       : api.post('/templates', formData);

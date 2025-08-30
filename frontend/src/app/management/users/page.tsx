@@ -30,7 +30,6 @@ const getApiErrorMessage = (error: any): string => {
     return defaultMessage;
   }
 
-  // Se a resposta for um array (erro de validação do Zod)
   if (Array.isArray(error.response.data)) {
     return error.response.data.map((err: any) => err.message).join('\n');
   }
