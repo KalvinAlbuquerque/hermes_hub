@@ -41,7 +41,19 @@ interface ReminderLog {
 
 const ActionsDropdown = ({ incident, openModal, handleSendReminderNow }: { incident: Incident, openModal: Function, handleSendReminderNow: Function }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [openUpwards, setOpenUpwards] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    const toggleDropdown = () => {
+        if (!isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            // Se houver menos de 150px abaixo, abra para cima.
+            setOpenUpwards(spaceBelow < 150);
+        }
+        setIsOpen(!isOpen);
+    };
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -60,11 +72,16 @@ const ActionsDropdown = ({ incident, openModal, handleSendReminderNow }: { incid
 
     return (
         <div className="relative inline-block text-left" ref={dropdownRef}>
-            <button onClick={() => setIsOpen(!isOpen)} className="btn-secondary px-2 py-2 text-xs">
+            <button ref={buttonRef} onClick={toggleDropdown} className="btn-secondary px-2 py-2 text-xs">
                 <MoreVertical className="h-4 w-4" />
             </button>
             {isOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-card border border-border ring-1 ring-black ring-opacity-5 z-10">
+                <div
+                    className={`
+                    absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-card border border-border ring-1 ring-black ring-opacity-5 z-10
+                    ${openUpwards ? 'bottom-full origin-bottom-right mb-2' : 'origin-top-right'}
+                  `}
+                >
                     <div className="py-1" role="menu" aria-orientation="vertical">
                         <a href="#" onClick={() => handleActionClick(openModal, incident, 'history')} className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:bg-secondary" role="menuitem">
                             <History className="h-4 w-4" /> Histórico
@@ -93,6 +110,7 @@ const ActionsDropdown = ({ incident, openModal, handleSendReminderNow }: { incid
         </div>
     );
 };
+
 
 
 function ManageIncidentsPage() {
@@ -274,7 +292,7 @@ function ManageIncidentsPage() {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto-y-visible">
                     <table className="min-w-full divide-y divide-border">
                         <thead className="bg-secondary/50">
                             <tr>
