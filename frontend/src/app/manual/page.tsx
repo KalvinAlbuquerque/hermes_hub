@@ -13,7 +13,9 @@ const sections = [
     { id: "visao-geral", title: "Visão Geral" },
     { id: "guia-usuario", title: "Guia do Usuário" },
     { id: "ciclo-de-vida", title: "O Ciclo de Vida do Incidente" },
+    { id: "relatorios", title: "Geração de Relatórios" },
     { id: "variaveis", title: "Variáveis e Palavras Reservadas" },
+    { id: "minha-conta-mfa", title: "Minha Conta e Segurança (MFA)" },
     { id: "guia-admin", title: "Guia do Administrador" },
     { id: "perfis-permissoes", title: "Perfis de Permissão" },
     { id: "clientes", title: "Clientes" },
@@ -79,6 +81,23 @@ function ManualPage() {
                                 <li><strong>Fechado (Verde):</strong> O incidente foi considerado resolvido e foi finalizado por um analista. Um incidente fechado não enviará mais lembretes.</li>
                             </ul>
                         </DocSection>
+                        
+                        <DocSection title="Geração de Relatórios" id="relatorios">
+                            <p>
+                                A página de <Link href="/reports" className="text-primary hover:underline">Relatórios</Link> permite extrair dados consolidados da plataforma em formato PDF para análise e apresentação.
+                            </p>
+                            <h3 className="text-xl font-semibold text-foreground mt-6">Como Gerar um Relatório</h3>
+                            <ol>
+                                <li><strong>Selecione o Período:</strong> Utilize os campos de data de início e fim ou os botões de atalho ("Últimos 7 dias", "Últimos 30 dias") para definir o intervalo de tempo desejado para a análise.</li>
+                                <li><strong>Escolha o Tipo de Relatório:</strong> Existem diferentes relatórios disponíveis, cada um com um foco específico.</li>
+                                <li><strong>Gere o PDF:</strong> Clique no botão "Gerar PDF" correspondente ao relatório que você deseja. O sistema irá compilar os dados e iniciar o download do arquivo.</li>
+                            </ol>
+                            <h3 className="text-xl font-semibold text-foreground mt-6">Tipos de Relatórios Disponíveis</h3>
+                            <ul>
+                                <li><strong>Categorias por Cliente:</strong> Mostra um detalhamento de quantas notificações de cada categoria (SLA) foram enviadas para cada cliente, ajudando a identificar os tipos de incidentes mais comuns por cliente.</li>
+                                <li><strong>Top Clientes Notificados:</strong> Apresenta um ranking dos clientes que mais receberam notificações no período, útil para identificar os clientes com maior volume de incidentes.</li>
+                            </ul>
+                        </DocSection>
 
                         <DocSection title="Variáveis e Palavras Reservadas" id="variaveis">
                             <p>
@@ -100,6 +119,25 @@ function ManualPage() {
                             </p>
                             <p>
                                 Adicionalmente, você pode usar a sintaxe `[IMAGEM: descrição da imagem]` diretamente no corpo do template. O sistema **não substituirá** este texto por um campo de upload; ele serve apenas como um **lembrete textual** no corpo do e-mail para o analista, indicando que uma imagem deve ser colada naquele local durante a fase de edição.
+                            </p>
+                        </DocSection>
+
+                        <DocSection title="Minha Conta e Segurança (MFA)" id="minha-conta-mfa">
+                            <p>
+                                A seção <Link href="/management/mfa" className="text-primary hover:underline">Minha Conta &gt; Segurança (MFA)</Link> permite que você adicione uma camada extra de proteção ao seu login.
+                            </p>
+                            <h3 className="text-xl font-semibold text-foreground mt-6">O que é MFA?</h3>
+                            <p>
+                                A Autenticação de Múltiplos Fatores (MFA ou 2FA) exige, além da sua senha, um código temporário de 6 dígitos gerado por um aplicativo no seu telemóvel (como Google Authenticator, Authy, etc.) para fazer o login. Isso garante que, mesmo que alguém descubra a sua senha, não conseguirá aceder à sua conta sem o seu telemóvel.
+                            </p>
+                            <h3 className="text-xl font-semibold text-foreground mt-6">Como Ativar o MFA</h3>
+                            <ol>
+                                <li>Acesse a página de segurança e clique em <strong>"Ativar Autenticação de Dois Fatores"</strong>.</li>
+                                <li><strong>Passo 1: Escanear o QR Code:</strong> Abra o seu aplicativo autenticador e escaneie o QR Code exibido na tela. Se não for possível, pode inserir a chave de configuração manualmente no aplicativo.</li>
+                                <li><strong>Passo 2: Verificar o Token:</strong> Após adicionar a conta no seu aplicativo, ele começará a gerar códigos de 6 dígitos. Insira o código atual no campo "Token de Verificação" e clique em <strong>"Verificar e Ativar"</strong>.</li>
+                            </ol>
+                            <p>
+                                Uma vez ativado, em todos os próximos logins, após inserir o seu e-mail e senha corretamente, o sistema solicitará o código de 6 dígitos do seu aplicativo autenticador.
                             </p>
                         </DocSection>
 
