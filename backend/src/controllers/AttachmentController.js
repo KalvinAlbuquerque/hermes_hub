@@ -43,11 +43,11 @@ module.exports = {
       if (!matches || matches.length !== 3) {
         return response.status(400).json({ message: 'Formato de imagem inválido.' });
       }
-      
+
       const fileType = matches[1];
       const imageData = Buffer.from(matches[2], 'base64');
       const extension = fileType.split('/')[1] || 'png';
-      
+
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       const filename = `pasted-${uniqueSuffix}.${extension}`;
       const filePath = path.join(uploadsDir, filename);
@@ -55,13 +55,12 @@ module.exports = {
       fs.writeFileSync(filePath, imageData);
 
       const publicUrl = `/files/attachments/${filename}`;
-      const fullUrl = `${process.env.BACKEND_URL || 'http://localhost:3333'}${publicUrl}`;
       const cid = filename.split('.')[0];
 
       // ALTERAÇÃO: Retorna o URL público para preview E o CID para o e-mail.
-      return response.json({ 
-        url: fullUrl, // Para o preview no editor
-        cid: cid      // Para o e-mail final
+      return response.json({
+        url: publicUrl, // URL relativa que o frontend irá interceptar
+        cid: cid
       });
 
     } catch (error) {

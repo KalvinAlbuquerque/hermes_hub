@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
         source: '/api/:path*',
         destination: 'http://backend:3333/:path*',
       },
+      {
+        source: '/files/:path*',
+        destination: 'http://backend:3333/files/:path*',
+      },
     ]
   },
   async headers() {
