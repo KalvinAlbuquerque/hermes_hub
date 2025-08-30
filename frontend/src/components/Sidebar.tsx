@@ -6,15 +6,17 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard, Send, Users, Shield, FileText, Settings, CheckSquare, History, ChevronDown, Monitor, Mail, Building, ShieldAlert,
-  Activity, Server, HelpCircle, FileBarChart, Info
+  Activity, Server, HelpCircle, FileBarChart, Info,
+  UserCog,
+  ShieldCheck
 } from 'lucide-react';
 
 // A estrutura de dados permanece a mesma
 const navLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Enviar Notificação', href: '/send', icon: Send },
-  { name: 'Gerenciar Incidentes', href: '/incidents', icon: Activity }, 
-  { name: 'Relatórios', href: '/reports', icon: FileBarChart }, 
+  { name: 'Gerenciar Incidentes', href: '/incidents', icon: Activity },
+  { name: 'Relatórios', href: '/reports', icon: FileBarChart },
   {
     name: 'Administração',
     icon: Settings,
@@ -37,8 +39,15 @@ const navLinks = [
     ]
   },
   { name: 'Aprovações', href: '/approvals', icon: CheckSquare },
+  {
+    name: 'Minha Conta',
+    icon: UserCog,
+    subLinks: [
+      { name: 'Segurança (MFA)', href: '/management/mfa', icon: ShieldCheck },
+    ]
+  },
   { name: 'Manual de Uso', href: '/manual', icon: HelpCircle },
-  { name: 'Sobre', href: '/about', icon: Info }, 
+  { name: 'Sobre', href: '/about', icon: Info },
 ];
 
 // Componente para um único link (sem alterações)

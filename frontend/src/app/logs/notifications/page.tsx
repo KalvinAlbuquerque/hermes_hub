@@ -78,9 +78,10 @@ function NotificationsLogPage() {
           clientes: clientesRes.data,
           templates: templatesRes.data.data,
         });
-      } catch (error) {
-        toast.error("Falha ao carregar dados para os filtros.");
-      }
+      } catch (err: any) { 
+      const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
+      toast.error(errorMessage);
+    } 
     };
     fetchDropdownData();
     fetchLogs(1);
@@ -94,9 +95,10 @@ function NotificationsLogPage() {
       setLogs(response.data.data);
       setTotalPages(response.data.totalPages);
       setCurrentPage(page);
-    } catch (err) {
-      toast.error('Falha ao carregar o log de notificações.');
-    } finally {
+    } catch (err: any) { 
+      const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
+      toast.error(errorMessage);
+    }  finally {
       setLoading(false);
     }
   };

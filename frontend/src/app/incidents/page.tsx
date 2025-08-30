@@ -6,8 +6,10 @@ import withAuth from "@/components/withAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle, Send, MoreVertical, 
-    MessageSquare, Mail, Bell } from 'lucide-react';
+import {
+    ShieldCheck, History, X as CloseIcon, RotateCcw, AlertTriangle, PauseCircle, Send, MoreVertical,
+    MessageSquare, Mail, Bell
+} from 'lucide-react';
 import Modal from '@/components/Modal';
 
 // 1. Adicionar 'protocol' e 'replyStatus' à interface
@@ -117,8 +119,9 @@ function ManageIncidentsPage() {
 
             const response = await api.get(`/logs/notifications?${params}`);
             setIncidents(response.data.data);
-        } catch (err) {
-            toast.error('Falha ao carregar os incidentes.');
+        } catch (err: any) {
+            const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }

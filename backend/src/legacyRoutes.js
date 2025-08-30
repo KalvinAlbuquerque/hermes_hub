@@ -5,13 +5,16 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('./database/prisma');
 const authMiddleware = require('./middleware/auth');
-const { logAction } = require('./services/AuditLogService'); 
+const { logAction } = require('./services/AuditLogService');
+const { loginLimiter } = require('./middleware/security');
+const { validate, createUserSchema } = require('./validators/userValidator');
+const speakeasy = require('speakeasy'); 
 // 1. Criamos uma instância do Router em vez de usar o 'app'
 const router = Router();
 
 // --- ROTA DE TESTE DO BANCO ---
 router.get('/db-test', async (request, response) => {
-  const userCount = await prisma.user.count(); 
+  const userCount = await prisma.user.count();
   response.json({
     message: 'Conexão com o banco via Prisma bem-sucedida!',
     userCount: userCount,
@@ -19,7 +22,7 @@ router.get('/db-test', async (request, response) => {
 });
 
 // --- ROTA DE CADASTRO DE USUÁRIO ---
-router.post('/users', async (request, response) => {
+router.post('/users', validate(createUserSchema), async (request, response) => {
   try {
     // Agora esperamos login e profileId no corpo da requisição
     const { name, email, login, password, profileId } = request.body;
@@ -40,7 +43,7 @@ router.post('/users', async (request, response) => {
         profileId, // Adicionado
       },
     });
-     await logAction({
+    await logAction({
       userId: newUser.id,
       action: 'USER_CREATE',
       details: {
@@ -65,23 +68,50 @@ router.post('/users', async (request, response) => {
 
 
 // --- ROTA DE LOGIN ---
-router.post('/login', async (request, response) => {
+router.post('/login', loginLimiter, async (request, response) => {
     try {
-        const { email, password } = request.body;
+        const { email, password, token: mfaToken } = request.body; // <-- Recebe o token MFA
         const user = await prisma.user.findUnique({ where: { email } });
+
         if (!user) {
-          return response.status(401).json({ message: 'E-mail ou senha inválidos.' });
+            return response.status(401).json({ message: 'E-mail ou senha inválidos.' });
         }
+
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-          return response.status(401).json({ message: 'E-mail ou senha inválidos.' });
+            return response.status(401).json({ message: 'E-mail ou senha inválidos.' });
         }
+
+        // --- LÓGICA DO MFA ---
+        if (user.mfaSecret) {
+            if (!mfaToken) {
+                // Senha correta, mas MFA está ativo e nenhum token foi enviado.
+                // Sinalize ao frontend que a próxima etapa é necessária.
+                return response.status(200).json({ mfaRequired: true });
+            }
+
+            const verified = speakeasy.totp.verify({
+                secret: user.mfaSecret,
+                encoding: 'base32',
+                token: mfaToken,
+                window: 1, // Permite uma pequena variação de tempo
+            });
+
+            if (!verified) {
+                return response.status(401).json({ message: 'Token de autenticação inválido.' });
+            }
+        }
+        // --- FIM DA LÓGICA DO MFA ---
+
+        // Se passou por tudo, gera o token JWT final
         const token = jwt.sign(
           { id: user.id, email: user.email },
           process.env.JWT_SECRET,
           { expiresIn: '8h' }
         );
+
         return response.json({ message: 'Login bem-sucedido!', token: token });
+
       } catch (error) {
         console.error("Erro no login:", error);
         return response.status(500).json({ message: 'Erro interno no servidor.' });
@@ -90,19 +120,19 @@ router.post('/login', async (request, response) => {
 
 // --- ROTA PROTEGIDA '/me' ---
 router.get('/me', authMiddleware, async (request, response) => {
-    const userId = request.user.id;
-    try {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, email: true, name: true, createdAt: true }
-        });
-        if (!user) {
-          return response.status(404).json({ message: 'Usuário não encontrado.' });
-        }
-        return response.json(user);
-      } catch (error) {
-        return response.status(500).json({ message: 'Erro interno no servidor.' });
-      }
+  const userId = request.user.id;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, createdAt: true }
+    });
+    if (!user) {
+      return response.status(404).json({ message: 'Usuário não encontrado.' });
+    }
+    return response.json(user);
+  } catch (error) {
+    return response.status(500).json({ message: 'Erro interno no servidor.' });
+  }
 });
 
 // 2. Exportamos o router configurado
