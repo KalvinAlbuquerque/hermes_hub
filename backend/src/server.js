@@ -11,7 +11,7 @@ const cronService = require('./services/CronService');
 const imapService = require('./services/ImapService');
 const app = express();
 const PORT = 3333;
-
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
