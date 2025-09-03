@@ -23,6 +23,24 @@ interface User {
   status: 'ENABLED' | 'DISABLED';
   profile: Profile;
 }
+const getApiErrorMessage = (error: any): string => {
+  const defaultMessage = 'Falha ao salvar. Verifique os dados e tente novamente.';
+
+  if (!error.response?.data) {
+    return defaultMessage;
+  }
+
+  if (Array.isArray(error.response.data)) {
+    return error.response.data.map((err: any) => err.message).join('\n');
+  }
+
+  // Se a resposta for um objeto com a propriedade "message" (erros gerais)
+  if (error.response.data.message) {
+    return error.response.data.message;
+  }
+
+  return defaultMessage;
+};
 
 function ManageUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -49,8 +67,9 @@ function ManageUsersPage() {
       ]);
       setUsers(usersResponse.data);
       setProfiles(profilesResponse.data);
-    } catch (err) {
-      toast.error('Falha ao carregar os dados.');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -126,10 +145,14 @@ function ManageUsersPage() {
       {
         loading: 'Salvando utilizador...',
         success: <b>Utilizador salvo com sucesso!</b>,
-        error: (err) => err.response?.data?.message || 'Falha ao salvar.',
+        // --- ALTERAÇÃO AQUI ---
+        // Agora usamos a nossa nova função para formatar o erro.
+        error: (err) => getApiErrorMessage(err),
+        // --- FIM DA ALTERAÇÃO ---
       }
     );
   };
+
 
   if (loading) return <DashboardLayout><p>Carregando utilizadores...</p></DashboardLayout>;
 

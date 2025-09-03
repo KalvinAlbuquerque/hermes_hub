@@ -51,8 +51,9 @@ function ApprovalsPage() {
       setLoading(true);
       const response = await api.get('/logs/notifications?status=PENDING');
       setNotifications(response.data.data);
-    } catch (err) {
-      toast.error('Falha ao carregar notificações pendentes.');
+    } catch (err: any) { 
+      const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -67,9 +68,10 @@ function ApprovalsPage() {
         const response = await api.get(`/logs/notifications/${notificationId}`);
         setSelectedNotification(response.data);
         setIsModalOpen(true);
-    } catch (err) {
-        toast.error('Não foi possível carregar os detalhes da notificação.');
-    }
+    } catch (err: any) { 
+      const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
+      toast.error(errorMessage);
+    } 
   };
 
   const handleApprove = (notificationId: string) => {

@@ -1,14 +1,18 @@
 // Arquivo: backend/src/controllers/TemplateController.js
 const prisma = require('../database/prisma');
-const { logAction } = require('../services/AuditLogService'); 
+const { logAction } = require('../services/AuditLogService');
 
 module.exports = {
   // Criar um template
-   async create(request, response) {
+  async create(request, response) {
     try {
       // 1. Adicionar categoryId à desestruturação
       const { name, subject, body, categoryId } = request.body;
-      const authorId = request.user.id; 
+      const authorId = request.user.id;
+
+      if (!categoryId) {
+        return response.status(400).json({ message: 'A seleção de uma categoria é obrigatória.' });
+      }
 
       if (!authorId) {
         return response.status(401).json({ message: 'Não foi possível identificar o autor. Sessão inválida.' });
@@ -19,7 +23,7 @@ module.exports = {
         data: { name, subject, body, authorId, categoryId },
       });
 
-       await logAction({
+      await logAction({
         userId: authorId,
         action: 'TEMPLATE_CREATE',
         details: { templateId: newTemplate.id, templateName: newTemplate.name }
@@ -27,10 +31,10 @@ module.exports = {
 
       return response.status(201).json(newTemplate);
     } catch (error) {
-      console.error("Falha ao criar template:", error); 
-      return response.status(500).json({ 
-          message: 'Erro interno ao criar o template.',
-          errorDetails: process.env.NODE_ENV !== 'production' ? error.message : undefined
+      console.error("Falha ao criar template:", error);
+      return response.status(500).json({
+        message: 'Erro interno ao criar o template.',
+        errorDetails: process.env.NODE_ENV !== 'production' ? error.message : undefined
       });
     }
   },
@@ -68,14 +72,16 @@ module.exports = {
       const { id } = request.params;
       // 1. Adicionar categoryId à desestruturação
       const { name, subject, body, categoryId } = request.body;
-
+      if (!categoryId) {
+        return response.status(400).json({ message: 'A seleção de uma categoria é obrigatória.' });
+      }
       const updatedTemplate = await prisma.template.update({
         where: { id },
         // 2. Adicionar categoryId aos dados
         data: { name, subject, body, categoryId },
       });
 
-        await logAction({
+      await logAction({
         userId: request.user.id,
         action: 'TEMPLATE_UPDATE',
         details: { templateId: updatedTemplate.id, newTemplateName: updatedTemplate.name }
@@ -89,15 +95,15 @@ module.exports = {
   },
 
   // Deletar um template
-   async destroy(request, response) {
+  async destroy(request, response) {
     try {
       const { id } = request.params;
-      
+
       const notificationsWithTemplate = await prisma.notificationLog.count({ where: { templateId: id } });
       if (notificationsWithTemplate > 0) {
         return response.status(400).json({ message: 'Não é possível excluir um template que já foi usado em notificações.' });
       }
-      
+
       const templateToDelete = await prisma.template.findUnique({ where: { id } });
       if (!templateToDelete) {
         return response.status(404).json({ message: 'Template não encontrado.' });
@@ -112,7 +118,7 @@ module.exports = {
         // A variável correta é `templateToDelete`, não `profileToDelete`
         details: { deletedTemplateId: id, deletedTemplateName: templateToDelete.name }
       });
-      
+
       return response.status(204).send();
     } catch (error) {
       console.error("Falha ao deletar template:", error);

@@ -61,9 +61,10 @@ function DashboardPage() {
         // Adiciona o período como um parâmetro na URL
         const response = await api.get(`/dashboard/stats?period=${period}`);
         setStats(response.data);
-      } catch (err) {
-        toast.error('Falha ao carregar as estatísticas do dashboard.');
-      } finally {
+      } catch (err: any) { 
+      const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
+      toast.error(errorMessage);
+    } finally {
         setLoading(false);
       }
     };

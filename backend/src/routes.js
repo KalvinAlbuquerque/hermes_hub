@@ -5,7 +5,7 @@ const NotificationController = require('./controllers/NotificationController');
 const DashboardController = require('./controllers/DashboardController');
 const authMiddleware = require('./middleware/auth');
 const AttachmentController = require('./controllers/AttachmentController'); // <-- Garante que está importado
-
+const MfaController = require('./controllers/MfaController'); 
 const routes = Router();
 
 // Rota do Dashboard
@@ -24,5 +24,9 @@ routes.delete('/templates/:id', authMiddleware, TemplateController.destroy);
 routes.post('/notifications/submit', authMiddleware, AttachmentController.handleUpload, NotificationController.submit);
 routes.post('/notifications/:id/approve', authMiddleware, NotificationController.approve);
 routes.post('/notifications/:id/reject', authMiddleware, NotificationController.reject);
+
+// --- ROTAS DE MFA ---
+routes.post('/mfa/setup', authMiddleware, MfaController.setup);
+routes.post('/mfa/verify', authMiddleware, MfaController.verifyAndEnable);
 
 module.exports = routes;

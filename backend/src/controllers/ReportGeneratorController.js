@@ -39,14 +39,19 @@ module.exports = {
   async generateCategoriesByClientReport(request, response) {
     const { startDate, endDate } = request.body;
 
+    // --- INÍCIO DA CORREÇÃO ---
+    // Ajusta a data final para incluir o dia inteiro.
+    const endDateAdjusted = new Date(endDate);
+    endDateAdjusted.setDate(endDateAdjusted.getDate() + 1);
+    // --- FIM DA CORREÇÃO ---
+
     try {
       const data = await prisma.notificationLog.findMany({
         where: {
           createdAt: {
             gte: new Date(startDate),
-            lte: new Date(endDate),
+            lt: endDateAdjusted, // <-- MUDANÇA AQUI: de 'lte' para 'lt' com a data ajustada
           },
-          // Garante que a notificação tenha clientes e categorias associadas
           clientes: { some: {} },
           template: { categoryId: { not: null } },
         },
@@ -77,7 +82,6 @@ module.exports = {
       doc.pipe(response);
 
       await addHeader(doc);
-      // --- TÍTULO AJUSTADO ---
       doc.fontSize(16).font('Helvetica-Bold').text('Relatório de Notificações por Categoria de Cliente', { align: 'center' });
       doc.fontSize(10).font('Helvetica').text(`Período: ${new Date(startDate).toLocaleDateString('pt-BR')} a ${new Date(endDate).toLocaleDateString('pt-BR')}`, { align: 'center' });
       doc.moveDown(2);
@@ -107,25 +111,32 @@ module.exports = {
   // Relatório 2: Top clientes mais notificados
   async generateTopClientsReport(request, response) {
     const { startDate, endDate } = request.body;
+
+    // --- INÍCIO DA CORREÇÃO ---
+    // Ajusta a data final para incluir o dia inteiro.
+    const endDateAdjusted = new Date(endDate);
+    endDateAdjusted.setDate(endDateAdjusted.getDate() + 1);
+    // --- FIM DA CORREÇÃO ---
+
     try {
+      const dateFilter = {
+        createdAt: {
+          gte: new Date(startDate),
+          lt: endDateAdjusted, // <-- MUDANÇA AQUI
+        },
+      };
+
       const data = await prisma.cliente.findMany({
         where: {
           notificationLogs: {
-            some: {
-              createdAt: {
-                gte: new Date(startDate),
-                lte: new Date(endDate),
-              },
-            },
+            some: dateFilter,
           },
         },
         select: {
           name: true,
           _count: {
             select: {
-              notificationLogs: {
-                where: { createdAt: { gte: new Date(startDate), lte: new Date(endDate) } },
-              },
+              notificationLogs: { where: dateFilter },
             },
           },
         },
@@ -153,7 +164,6 @@ module.exports = {
 
       doc.font('Helvetica-Bold').fontSize(12);
       
-      // --- BLOCO DE ALINHAMENTO CORRIGIDO ---
       const drawRow = (y, pos, client, count, font, size) => {
         doc.font(font).fontSize(size);
         doc.text(pos, posCol, y);
@@ -161,23 +171,19 @@ module.exports = {
         doc.text(count, notificationsCol, y, { width: colWidth, align: 'right' });
       }
 
-      // Desenha o Cabeçalho
       drawRow(tableTop, 'Posição', 'Cliente', 'Nº de Notificações', 'Helvetica-Bold', 12);
       doc.moveDown(1);
       
-      // Desenha as Linhas da Tabela
       doc.font('Helvetica').fontSize(11);
       sortedData.forEach((item, index) => {
           if (doc.y > 700) {
               doc.addPage();
-              // Se adicionar uma nova página, redesenhe o cabeçalho
               drawRow(doc.page.margins.top, 'Posição', 'Cliente', 'Nº de Notificações', 'Helvetica-Bold', 12);
               doc.moveDown(1);
           }
           drawRow(doc.y, `${index + 1}º`, item.name, item.count.toString(), 'Helvetica', 11);
           doc.moveDown(1);
       });
-      // --- FIM DO BLOCO CORRIGIDO ---
       
       addFooter(doc);
       doc.end();

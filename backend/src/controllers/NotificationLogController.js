@@ -1,4 +1,5 @@
-// backend/src/controllers/NotificationLogController.js
+// Arquivo: backend/src/controllers/NotificationLogController.js
+
 const prisma = require('../database/prisma');
 const { logAction } = require('../services/AuditLogService');
 const { calculateNextReminder } = require('../services/CronService');
@@ -69,7 +70,6 @@ module.exports = {
     } catch (error) { return response.status(500).json({ message: 'Erro ao buscar detalhes do log.' }); }
   },
 
-  // --- FUNÇÃO CORRIGIDA E ADICIONADA ---
   async getRecentRepliesForUser(request, response) {
     try {
         const userId = request.user.id;
@@ -96,7 +96,6 @@ module.exports = {
     }
   },
 
-  // --- FUNÇÃO NOVA ADICIONADA ---
   async markRepliesAsRead(request, response) {
     try {
         const userId = request.user.id;
@@ -127,15 +126,25 @@ module.exports = {
       const incident = await prisma.notificationLog.findUnique({ where: { id }, include: { template: { include: { category: true } } } });
       if (!incident) { return response.status(404).json({ message: 'Incidente não encontrado.' }); }
       if (!incident.template?.category) { return response.status(400).json({ message: 'Incidente não possui uma categoria de SLA para enviar lembretes.' }); }
+      
       const category = incident.template.category;
-      const protocol = `HERMES-${incident.id.substring(0, 8).toUpperCase()}`;
+      const protocol = incident.protocol || `HERMES-${incident.id.substring(0, 8).toUpperCase()}`;
+
+      // Constrói o assunto e o corpo do e-mail a partir da categoria
+      const finalSubject = category.reminderSubject
+        .replace(/\[ASSUNTO\]/gi, incident.subject)
+        .replace(/\[PROTOCOLO\]/gi, protocol);
+
+      const finalHtmlBody = category.reminderTemplateBody.replace(/\[PROTOCOLO\]/g, protocol);
+
       await sendMail({
         to: incident.recipients,
-        subject: `[LEMBRETE] Pendência em Aberto: ${incident.subject}`,
-        html: category.reminderTemplateBody.replace(/\[PROTOCOLO\]/g, protocol),
+        subject: finalSubject,
+        html: finalHtmlBody,
         accountId: incident.emailAccountId,
         notificationId: incident.id,
       });
+
       const nextReminderDate = calculateNextReminder(category);
       await prisma.notificationLog.update({ where: { id: incident.id }, data: { nextReminderAt: nextReminderDate } });
       await prisma.reminderLog.create({ data: { notificationLogId: incident.id } });

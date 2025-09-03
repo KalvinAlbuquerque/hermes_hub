@@ -3,12 +3,10 @@
 @tailwind utilities;
 
 @layer base {
-  /* --- ADIÇÃO AQUI --- */
   html {
     @apply scroll-smooth;
   }
 
-  /* Força o tema escuro como padrão */
   :root, .dark {
     --background: #0D1117;
     --foreground: #E6EDF3;
@@ -17,10 +15,7 @@
     --primary: #2F81F7;
     --muted-foreground: #8D96A0;
   }
-}
 
-
-@layer base {
   body {
     @apply bg-background text-foreground;
   }
@@ -49,11 +44,18 @@
     @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
   }
   .btn-secondary {
-    /* --- ALTERAÇÃO AQUI --- */
-    /* Adicionamos a cor do texto para garantir a legibilidade */
     @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/90 border border-border;
   }
   .btn-destructive {
     @apply btn bg-destructive text-white hover:bg-destructive/90;
+  }
+}
+
+/* --- CORREÇÃO AQUI --- */
+/* A camada de utilidades foi movida para fora da camada de componentes */
+@layer utilities {
+  .overflow-x-auto-y-visible {
+    overflow-x: auto;
+    overflow-y: visible;
   }
 }

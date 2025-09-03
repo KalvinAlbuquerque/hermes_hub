@@ -16,24 +16,27 @@ async function sendMail({ to, cc, subject, html, accountId, attachments = [] }) 
       host: account.smtpHost,
       port: account.smtpPort,
       secure: account.smtpSecure,
+      tls: {
+        rejectUnauthorized: false // <- permite certificado autoassinado
+      }
     };
 
     if (account.smtpUser) {
-        transporterOptions.auth = {
-            user: account.smtpUser,
-            pass: decrypt(account.smtpPass || ''),
-        };
+      transporterOptions.auth = {
+        user: account.smtpUser,
+        pass: decrypt(account.smtpPass || ''),
+      };
     }
 
     const transporter = nodemailer.createTransport(transporterOptions);
 
     const mailOptions = {
-        from: `"${account.name}" <${account.email}>`,
-        to,
-        cc, // 2. Adicionar a propriedade cc ao objeto de opções
-        subject,
-        html,
-        attachments: attachments,
+      from: `"${account.name}" <${account.email}>`,
+      to,
+      cc, // 2. Adicionar a propriedade cc ao objeto de opções
+      subject,
+      html,
+      attachments: attachments,
     };
 
     const info = await transporter.sendMail(mailOptions);

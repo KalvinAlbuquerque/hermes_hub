@@ -135,7 +135,7 @@ module.exports = {
         await sendMail({
           to: approver.email,
           subject: `[PARA APROVAÇÃO] ${finalSubject}`,
-          html: `<h1>Revisão Necessária</h1><p>Uma nova notificação, enviada por <strong>${sender.name}</strong>, está aguardando sua aprovação.</p><p><strong>Assunto:</strong> ${finalSubject}</p><p>Por favor, acesse a <a href="http://localhost:3000/approvals">página de aprovações</a> para revisar.</p>`,
+          html: `<h1>Revisão Necessária</h1><p>Uma nova notificação, enviada por <strong>${sender.name}</strong>, está aguardando sua aprovação.</p><p><strong>Assunto:</strong> ${finalSubject}</p><p>Por favor, acesse a página de aprovações para revisar.</p>`,
           accountId: emailAccountId
         });
       }
