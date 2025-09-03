@@ -137,6 +137,9 @@ module.exports = {
 
       const finalHtmlBody = category.reminderTemplateBody.replace(/\[PROTOCOLO\]/g, protocol);
 
+      // --- CORREÇÃO AQUI ---
+      // Garantimos que o envio do lembrete também use o campo 'to'
+      // para que todos os destinatários possam interagir.
       await sendMail({
         to: incident.recipients,
         subject: finalSubject,
@@ -144,6 +147,7 @@ module.exports = {
         accountId: incident.emailAccountId,
         notificationId: incident.id,
       });
+      // --- FIM DA CORREÇÃO ---
 
       const nextReminderDate = calculateNextReminder(category);
       await prisma.notificationLog.update({ where: { id: incident.id }, data: { nextReminderAt: nextReminderDate } });

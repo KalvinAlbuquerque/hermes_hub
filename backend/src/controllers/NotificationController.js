@@ -242,43 +242,25 @@ module.exports = {
       ccEmails = companyEmailsSetting.value.split(',').map(email => email.trim()).filter(Boolean);
     }
 
-    // O envio agora acontece para o primeiro destinatário para pegar o Message-ID
-    const firstRecipient = notification.recipients[0];
-    if (!firstRecipient) return;
-
+    // --- CORREÇÃO PRINCIPAL AQUI ---
+    // Trocamos 'bcc' por 'to'. Agora todos os destinatários se verão.
     const result = await sendMail({
-      to: firstRecipient,
+      to: notification.recipients, // Usamos TO para a lista principal
       cc: ccEmails.length > 0 ? ccEmails : undefined,
       subject: finalSubject,
       html: finalHtmlBody,
       accountId: notification.emailAccountId,
       attachments: finalAttachments,
-      // Passamos o notificationId para o cabeçalho In-Reply-To nos lembretes
     });
-    console.log(`[DEBUG] Resultado do envio para ${firstRecipient} (Protocolo: ${notification.protocol}):`, result);
-    // Se o envio principal foi bem-sucedido e temos um messageId, salvamos e enviamos para os outros
+    // --- FIM DA CORREÇÃO ---
+
     if (result.success && result.messageId) {
-      console.log(`[DEBUG] Message-ID ${result.messageId} será guardado para o protocolo ${notification.protocol}.`);
       await prisma.notificationLog.update({
         where: { id: notification.id },
-        data: { messageId: cleanMessageId(result.messageId) }, // <-- APLIQUE A FUNÇÃO AQUI
+        data: { messageId: cleanMessageId(result.messageId) },
       });
-
-
-      // Envia para os destinatários restantes, se houver
-      const remainingRecipients = notification.recipients.slice(1);
-      for (const recipient of remainingRecipients) {
-        await sendMail({
-          to: recipient,
-          cc: ccEmails.length > 0 ? ccEmails : undefined,
-          subject: finalSubject,
-          html: finalHtmlBody,
-          accountId: notification.emailAccountId,
-          attachments: finalAttachments,
-        });
-      }
     } else {
-      throw new Error("Falha ao enviar e-mail principal ou obter Message-ID.");
+      throw new Error("Falha ao enviar e-mail ou obter Message-ID.");
     }
   },
 

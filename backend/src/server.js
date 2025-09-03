@@ -25,7 +25,7 @@ app.use(logRoutes);
 app.use(reportRoutes); // <-- ADICIONADO
 
 cronService.initialize();
-imapService.initialize();
+imapService.start();
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor Hermes Hub rodando na porta ${PORT}`);

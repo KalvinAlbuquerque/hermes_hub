@@ -17,7 +17,7 @@ async function sendMail({ to, cc, subject, html, accountId, attachments = [] }) 
       port: account.smtpPort,
       secure: account.smtpSecure,
       tls: {
-        rejectUnauthorized: false // <- permite certificado autoassinado
+        rejectUnauthorized: false
       }
     };
 
@@ -32,15 +32,16 @@ async function sendMail({ to, cc, subject, html, accountId, attachments = [] }) 
 
     const mailOptions = {
       from: `"${account.name}" <${account.email}>`,
-      to,
-      cc, // 2. Adicionar a propriedade cc ao objeto de opções
+      to, // 2. O campo 'to' agora receberá diretamente o array de destinatários
+      cc,
       subject,
       html,
       attachments: attachments,
     };
 
     const info = await transporter.sendMail(mailOptions);
-
+    
+    // O log permanece o mesmo, pois 'to' pode ser um array
     console.log(`E-mail enviado para ${to} usando ${account.email}: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
