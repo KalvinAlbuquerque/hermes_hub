@@ -78,10 +78,10 @@ function NotificationsLogPage() {
           clientes: clientesRes.data,
           templates: templatesRes.data.data,
         });
-      } catch (err: any) { 
-      const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
-      toast.error(errorMessage);
-    } 
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
+        toast.error(errorMessage);
+      }
     };
     fetchDropdownData();
     fetchLogs(1);
@@ -95,10 +95,10 @@ function NotificationsLogPage() {
       setLogs(response.data.data);
       setTotalPages(response.data.totalPages);
       setCurrentPage(page);
-    } catch (err: any) { 
+    } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
       toast.error(errorMessage);
-    }  finally {
+    } finally {
       setLoading(false);
     }
   };
@@ -248,15 +248,15 @@ function NotificationsLogPage() {
               <div><h3 className="text-sm font-medium text-muted-foreground">Enviado por</h3><p>{selectedLog.submittedByUser.name}</p></div>
               <div><h3 className="text-sm font-medium text-muted-foreground">Aprovado por</h3><p>{selectedLog.approvedByUser?.name || 'N/A'}</p></div>
 
-              {/* LÓGICA ATUALIZADA PARA DESTINATÁRIOS */}
               <div className="col-span-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Destinatários</h3>
-                <p>
-                  {selectedLog.clientes && selectedLog.clientes.length > 0
-                    ? selectedLog.clientes.map(c => c.name).join(', ')
-                    : selectedLog.recipients.join(', ')
-                  }
-                </p>
+                <div className="mt-1 p-2 text-xs bg-background rounded-md max-h-24 overflow-y-auto border border-border">
+                  {selectedLog.clientes && selectedLog.clientes.length > 0 && (
+                    <p className="font-bold mb-1">Clientes: {selectedLog.clientes.map(c => c.name).join(', ')}</p>
+                  )}
+                  {/* Exibe a lista completa de e-mails */}
+                  <p className="whitespace-pre-wrap break-words">{selectedLog.recipients.join(', ')}</p>
+                </div>
               </div>
             </div>
             {selectedLog.rejectionReason && (
