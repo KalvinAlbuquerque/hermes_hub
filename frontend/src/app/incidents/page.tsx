@@ -24,6 +24,20 @@ interface Incident {
     submittedByUser: { name: string };
     clientes: { name: string }[];
 }
+interface IncidentDetails {
+    id: string;
+    protocol?: string;
+    subject: string;
+    body: string;
+    status: string;
+    recipients: string[];
+    rejectionReason?: string;
+    submittedByUser: { name: string };
+    approvedByUser?: { name: string };
+    emailAccount?: { name: string; email: string };
+    clientes: { name: string }[];
+    attachments?: { filename: string }[];
+}
 
 interface TimelineEvent {
     type: 'OPENED' | 'REPLIED' | 'REMINDER';
@@ -118,6 +132,8 @@ function ManageIncidentsPage() {
     const [loading, setLoading] = useState(true);
     const [analysts, setAnalysts] = useState<User[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false); // Controla o novo modal
+    const [selectedIncidentDetails, setSelectedIncidentDetails] = useState<IncidentDetails | null>(null); // Armazena os detalhes
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
     const [modalContent, setModalContent] = useState<'history' | 'close' | 'reopen' | 'pause' | null>(null);
     const [reminderHistory, setReminderHistory] = useState<ReminderLog[]>([]);
@@ -166,6 +182,16 @@ function ManageIncidentsPage() {
 
     const handleApplyFilters = () => {
         fetchIncidents(filters);
+    };
+
+    const handleRowClick = async (incidentId: string) => {
+        try {
+            const response = await api.get(`/logs/notifications/${incidentId}`);
+            setSelectedIncidentDetails(response.data);
+            setIsDetailsModalOpen(true);
+        } catch (error) {
+            toast.error("Falha ao carregar detalhes do incidente.");
+        }
     };
 
     const openModal = async (incident: Incident, type: 'close' | 'reopen' | 'history' | 'pause') => {
@@ -309,7 +335,7 @@ function ManageIncidentsPage() {
                                 <tr><td colSpan={6} className="text-center py-10 text-muted-foreground">A carregar...</td></tr>
                             ) : incidents.length > 0 ? (
                                 incidents.map((incident) => (
-                                    <tr key={incident.id} className="hover:bg-secondary/30 transition-colors">
+                                    <tr key={incident.id} onClick={() => handleRowClick(incident.id)} className="hover:bg-secondary/30 transition-colors cursor-pointer">
                                         <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{incident.protocol}</td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(incident.createdAt).toLocaleString('pt-BR')}</td>
                                         <td className="px-6 py-4 text-sm text-foreground">{incident.subject}</td>
@@ -336,8 +362,16 @@ function ManageIncidentsPage() {
                                         <td className="px-6 py-4 text-right">
                                             <ActionsDropdown
                                                 incident={incident}
-                                                openModal={openModal}
-                                                handleSendReminderNow={handleSendReminderNow}
+                                                openModal={(inc: Incident, type: 'close' | 'reopen' | 'history' | 'pause') => {
+                                                    const e = window.event;
+                                                    if (e) e.stopPropagation();
+                                                    openModal(inc, type);
+                                                }}
+                                                handleSendReminderNow={(id: string, subject: string) => {
+                                                    const e = window.event;
+                                                    if (e) e.stopPropagation();
+                                                    handleSendReminderNow(id, subject);
+                                                }}
                                             />
                                         </td>
                                     </tr>
@@ -402,7 +436,6 @@ function ManageIncidentsPage() {
                                     Incidente: "{selectedIncident.protocol}"
                                 </h3>
                                 <ul className="space-y-2">
-                                    {/* 6. Renderiza a timeline unificada */}
                                     {timeline.map((event, index) => {
                                         const eventConfig = {
                                             OPENED: { icon: Mail, text: 'Incidente aberto', color: 'blue' },
@@ -431,6 +464,57 @@ function ManageIncidentsPage() {
                             </div>
                         )}
                     </>
+                )}
+            </Modal>
+
+            <Modal title="Detalhes da Notificação" isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)}>
+                {selectedIncidentDetails && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><h3 className="text-sm font-medium text-muted-foreground">Protocolo</h3><p className="font-mono">{selectedIncidentDetails.protocol || 'N/A'}</p></div>
+                            <div><h3 className="text-sm font-medium text-muted-foreground">Status</h3><p>{selectedIncidentDetails.status}</p></div>
+                            <div><h3 className="text-sm font-medium text-muted-foreground">Enviado por</h3><p>{selectedIncidentDetails.submittedByUser.name}</p></div>
+                            <div><h3 className="text-sm font-medium text-muted-foreground">Aprovado por</h3><p>{selectedIncidentDetails.approvedByUser?.name || 'N/A'}</p></div>
+                            <div className="col-span-2"><h3 className="text-sm font-medium text-muted-foreground">Assunto</h3><p>{selectedIncidentDetails.subject}</p></div>
+                        </div>
+
+                        <div className="col-span-2">
+                            <h3 className="text-sm font-medium text-muted-foreground">Destinatários</h3>
+                            <div className="mt-1 p-2 text-xs bg-background rounded-md max-h-24 overflow-y-auto border border-border">
+                                {selectedIncidentDetails.clientes && selectedIncidentDetails.clientes.length > 0 && (
+                                    <p className="font-bold mb-1">Clientes: {selectedIncidentDetails.clientes.map(c => c.name).join(', ')}</p>
+                                )}
+                                <p className="whitespace-pre-wrap break-words">{selectedIncidentDetails.recipients.join(', ')}</p>
+                            </div>
+                        </div>
+
+                        {selectedIncidentDetails.attachments && selectedIncidentDetails.attachments.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-medium text-muted-foreground">Anexos</h3>
+                                <ul className="mt-1 list-disc list-inside text-sm">
+                                    {selectedIncidentDetails.attachments.map((att, index) => <li key={index}>{att.filename}</li>)}
+                                </ul>
+                            </div>
+                        )}
+
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground">Corpo do E-mail</h3>
+                            <div className="mt-1 p-4 border border-border rounded-md bg-background max-h-60 overflow-y-auto">
+                                <div className="prose prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: selectedIncidentDetails.body }} />
+                            </div>
+                        </div>
+
+                        {selectedIncidentDetails.rejectionReason && (
+                            <div>
+                                <h3 className="text-sm font-medium text-destructive">Motivo da Rejeição</h3>
+                                <p className="text-sm bg-destructive/10 p-2 rounded-md">{selectedIncidentDetails.rejectionReason}</p>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end pt-4">
+                            <button onClick={() => setIsDetailsModalOpen(false)} className="btn-secondary">Fechar</button>
+                        </div>
+                    </div>
                 )}
             </Modal>
         </DashboardLayout>
