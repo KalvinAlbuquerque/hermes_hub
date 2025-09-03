@@ -114,6 +114,9 @@ module.exports = {
         host: smtpHost,
         port: smtpPort,
         secure: smtpSecure, // O frontend enviará true/false diretamente
+        tls: {
+          rejectUnauthorized: false
+        },
         auth: {
           user: smtpUser,
           pass: smtpPass, // A senha virá descriptografada do formulário
