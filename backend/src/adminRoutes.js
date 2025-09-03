@@ -10,6 +10,11 @@ const ReportController = require('./controllers/ReportController');
 const EmailAccountController = require('./controllers/EmailAccountController');
 const CompanyController = require('./controllers/CompanyController');
 const CategoryController = require('./controllers/CategoryController');
+const BackupController = require('./controllers/BackupController');
+const multer = require('multer');
+
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const adminRoutes = Router();
 adminRoutes.use(authMiddleware); // Primeiro, garante que o usuário está logado
@@ -55,5 +60,11 @@ adminRoutes.post('/company/test-imap', can('canManageProfiles'), CompanyControll
 adminRoutes.get('/audit-logs', AuditLogController.index);
 adminRoutes.get('/reports/audit-logs/csv', ReportController.generateAuditLogsCSV);
 adminRoutes.get('/reports/audit-logs/pdf', ReportController.generateAuditLogsPDF);
+
+
+// Rotas de Backup e Restauração (Requer permissão de gerenciar perfis)
+adminRoutes.get('/backup', can('canManageProfiles'), BackupController.createBackup);
+adminRoutes.post('/restore', can('canManageProfiles'), upload.single('backupFile'), BackupController.restoreBackup);
+
 
 module.exports = adminRoutes;
