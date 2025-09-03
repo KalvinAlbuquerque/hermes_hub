@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import Modal from '@/components/Modal';
-import { Paperclip } from 'lucide-react'; // Importe o ícone
+import { Paperclip, Users } from 'lucide-react'; // Importe o ícone Users
 
 // Tipagem dos dados
 interface Attachment {
@@ -15,6 +15,7 @@ interface Attachment {
   storedFilename: string;
 }
 
+// Interface atualizada para incluir os detalhes dos destinatários
 interface Notification {
   id: string;
   status: 'PENDING' | 'SENT' | 'REJECTED';
@@ -23,13 +24,15 @@ interface Notification {
   createdAt: string;
   submittedByUser: { name: string };
   template: { name: string };
-  attachments?: Attachment[]; // Adicione o campo de anexos
+  attachments?: Attachment[];
+  recipients: string[]; // Lista completa de e-mails
+  clientes: { name: string }[]; // Lista de nomes de clientes (se aplicável)
 }
 
 // Componente de Badge de Status
 const StatusBadge = ({ status }: { status: string }) => {
     const statusStyles: { [key: string]: string } = {
-        PENDING: 'bg-status-medium/20 text-status-medium',
+        PENDING: 'bg-yellow-500/20 text-yellow-500', // Alterado para combinar com o dashboard
     };
     return (
         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[status] || 'bg-secondary'}`}>
@@ -51,7 +54,7 @@ function ApprovalsPage() {
       setLoading(true);
       const response = await api.get('/logs/notifications?status=PENDING');
       setNotifications(response.data.data);
-    } catch (err: any) { 
+    } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
       toast.error(errorMessage);
     } finally {
@@ -68,10 +71,10 @@ function ApprovalsPage() {
         const response = await api.get(`/logs/notifications/${notificationId}`);
         setSelectedNotification(response.data);
         setIsModalOpen(true);
-    } catch (err: any) { 
+    } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
       toast.error(errorMessage);
-    } 
+    }
   };
 
   const handleApprove = (notificationId: string) => {
@@ -105,7 +108,7 @@ function ApprovalsPage() {
       }
     );
   };
-  
+
   const closeModal = () => {
     setIsModalOpen(false);
     setIsRejecting(false);
@@ -157,6 +160,20 @@ function ApprovalsPage() {
                   <div><h4 className="font-semibold text-sm text-muted-foreground">Template</h4><p>{selectedNotification.template.name}</p></div>
                 </div>
 
+                {/* Bloco de Destinatários */}
+                <div className="mb-4 pb-4 border-b border-border">
+                    <h4 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Destinatários ({selectedNotification.recipients.length})
+                    </h4>
+                    <div className="mt-2 p-2 text-xs bg-background rounded-md max-h-24 overflow-y-auto border border-border">
+                        {selectedNotification.clientes && selectedNotification.clientes.length > 0 && (
+                            <p className="font-bold mb-1">Clientes: {selectedNotification.clientes.map(c => c.name).join(', ')}</p>
+                        )}
+                        <p className="whitespace-pre-wrap break-words">{selectedNotification.recipients.join(', ')}</p>
+                    </div>
+                </div>
+
                 {/* Bloco de Anexos */}
                 {selectedNotification.attachments && selectedNotification.attachments.length > 0 && (
                   <div className="mb-4 pb-4 border-b border-border">
@@ -172,7 +189,7 @@ function ApprovalsPage() {
                   </div>
                 )}
 
-                <div className="mb-4 pb-4 border-b border-border">
+                <div className="mb-4 pb-4">
                     <h4 className="font-semibold text-sm text-muted-foreground">Pré-visualização do Corpo</h4>
                     <div className="mt-2 p-4 border border-border rounded-md bg-background max-h-60 overflow-y-auto">
                         <div className="prose prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: selectedNotification.body }} />
