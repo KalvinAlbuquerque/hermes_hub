@@ -28,6 +28,7 @@ const navLinks = [
       { name: 'Gerenciar Clientes', href: '/management/clientes', icon: Users },
       { name: 'Gerenciar Categorias', href: '/management/categories', icon: Server },
       { name: 'Gerenciar Contas de E-mail', href: '/management/email-accounts', icon: Mail },
+      { name: 'Backup / Restauração', href: '/management/backup', icon: History }, // <-- NOVA LINHA
     ]
   },
   {
