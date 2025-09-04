@@ -49,7 +49,7 @@ const processReply = async (parsedEmail, uid) => {
 
         // 2. Segunda tentativa (Fallback): Buscar pelo Protocolo no Assunto do e-mail
         if (!originalNotification && parsedEmail.subject) {
-            const protocolMatch = parsedEmail.subject.match(/HERMES-([A-Z0-9]{8})/i);
+            const protocolMatch = parsedEmail.subject.match(/([A-Z0-9]{8})/i);
             if (protocolMatch && protocolMatch[0]) {
                 const protocol = protocolMatch[0].toUpperCase();
                 console.log(`[IMAP] Message-ID não encontrado. Tentando encontrar por Protocolo: ${protocol}`);
@@ -223,7 +223,7 @@ const restart = async () => {
     console.log('[IMAP] Reiniciando serviço...');
     stop();
     // Adiciona um pequeno delay para garantir que a conexão antiga seja totalmente encerrada
-    setTimeout(start, 2000); 
+    setTimeout(start, 2000);
 };
 
 module.exports = { start, stop, restart };

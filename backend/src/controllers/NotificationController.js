@@ -6,9 +6,9 @@ const path = require('path');
 const { calculateNextReminder } = require('../services/CronService');
 
 const cleanMessageId = (idString) => {
-    if (!idString) return null;
-    const match = idString.match(/<([^>]+)>/);
-    return match ? match[1] : idString;
+  if (!idString) return null;
+  const match = idString.match(/<([^>]+)>/);
+  return match ? match[1] : idString;
 };
 
 module.exports = {
@@ -105,7 +105,8 @@ module.exports = {
         // Gera e salva o protocolo, e GUARDA o resultado atualizado
         const notificationWithProtocol = await prisma.notificationLog.update({
           where: { id: newNotification.id },
-          data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+          //          data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+          data: { protocol: newNotification.id.substring(0, 8).toUpperCase() }
         });
 
         // PASSA o objeto ATUALIZADO para a função de envio
@@ -125,7 +126,8 @@ module.exports = {
       // Gera e salva o protocolo
       await prisma.notificationLog.update({
         where: { id: newNotification.id },
-        data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+        //data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+        data: { protocol: newNotification.id.substring(0, 8).toUpperCase() }
       });
 
       await logAction({ userId: senderId, action: 'NOTIFICATION_SUBMITTED', details: { notificationId: newNotification.id, subject: finalSubject } });
