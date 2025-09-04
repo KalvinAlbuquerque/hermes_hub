@@ -10,7 +10,8 @@ import { ShieldCheck } from 'lucide-react';
 
 function ManageMfaPage() {
     const [isLoading, setIsLoading] = useState(false);
-    const [setupData, setSetupData] = useState<{ qrCodeUrl: string; secret: string } | null>(null);
+    // 1. Atualize a interface do estado para incluir o novo token
+    const [setupData, setSetupData] = useState<{ qrCodeUrl: string; secret: string; mfaSetupToken: string } | null>(null);
     const [verificationToken, setVerificationToken] = useState('');
 
     const handleSetupMfa = async () => {
@@ -18,6 +19,7 @@ function ManageMfaPage() {
         const toastId = toast.loading('A gerar o seu código de segurança...');
         try {
             const response = await api.post('/mfa/setup');
+            // 2. Salva todos os dados recebidos, incluindo o mfaSetupToken
             setSetupData(response.data);
             toast.success('Código gerado! Siga os próximos passos.', { id: toastId });
         } catch (error) {
@@ -34,15 +36,19 @@ function ManageMfaPage() {
             return;
         }
 
-        const promise = api.post('/mfa/verify', { token: verificationToken });
+        // 3. Envie o token do usuário E o mfaSetupToken para verificação
+        const promise = api.post('/mfa/verify', {
+            token: verificationToken,
+            mfaSetupToken: setupData?.mfaSetupToken
+        });
 
         toast.promise(promise, {
             loading: 'A verificar o token...',
-            success: () => {
+            success: (res) => {
                 setSetupData(null);
                 setVerificationToken('');
-                // Idealmente, aqui você atualizaria um estado global para refletir que o MFA está ativo.
-                return <b>MFA ativado com sucesso!</b>;
+                // Usa a mensagem de sucesso do backend para mais clareza
+                return <b>{res.data.message || 'MFA ativado com sucesso!'}</b>;
             },
             error: (err) => err.response?.data?.message || <b>Token inválido. Tente novamente.</b>,
         });
@@ -81,8 +87,8 @@ function ManageMfaPage() {
                             <img src={setupData.qrCodeUrl} alt="QR Code para MFA" />
                         </div>
                         <div className="mb-6">
-                             <label className="block text-sm font-medium text-muted-foreground">Ou insira esta chave manualmente:</label>
-                             <input type="text" readOnly value={setupData.secret} className="input-style font-mono tracking-wider text-center" />
+                            <label className="block text-sm font-medium text-muted-foreground">Ou insira esta chave manualmente:</label>
+                            <input type="text" readOnly value={setupData.secret} className="input-style font-mono tracking-wider text-center" />
                         </div>
 
                         <h3 className="text-lg font-semibold text-foreground mt-8">Passo 2: Verifique o Token</h3>
