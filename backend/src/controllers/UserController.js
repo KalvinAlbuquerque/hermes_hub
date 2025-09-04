@@ -2,7 +2,63 @@
 const prisma = require('../database/prisma');
 const bcrypt = require('bcryptjs');
 const { logAction } = require('../services/AuditLogService');
+const { validate, createUserSchema } = require('../validators/userValidator');
 module.exports = {
+
+ async create(request, response) {
+    try {
+      const { name, email, login, password, profileId } = request.body;
+
+      if (!profileId) {
+        return response.status(400).json({ message: 'O perfil é obrigatório.' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const newUser = await prisma.user.create({
+        data: { name, email, login, password: hashedPassword, profileId },
+      });
+
+      // --- INÍCIO DA MELHORIA NO LOG ---
+
+      // 1. Busca o nome do administrador que está realizando a ação
+      const actor = await prisma.user.findUnique({
+        where: { id: request.user.id },
+        select: { name: true }
+      });
+      
+      const actorName = actor ? actor.name : 'Sistema';
+
+      // 2. Cria um objeto de detalhes mais descritivo
+      await logAction({
+        userId: request.user.id,
+        action: 'USER_CREATE',
+        details: {
+          actor: {
+            id: request.user.id,
+            name: actorName,
+          },
+          createdUser: {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+          },
+          message: `O usuário '${actorName}' criou o novo usuário '${newUser.name}'.`
+        },
+      });
+      // --- FIM DA MELHORIA NO LOG ---
+
+      delete newUser.password;
+      return response.status(201).json(newUser);
+    } catch (error) {
+      if (error.code === 'P2002') {
+        const field = error.meta.target.includes('email') ? 'e-mail' : 'login';
+        return response.status(409).json({ message: `Este ${field} já está em uso.` });
+      }
+      console.error("Erro ao criar usuário:", error);
+      return response.status(500).json({ message: 'Erro interno ao criar usuário.' });
+    }
+  },
   // Listar todos os usuários (sem a senha)
   async index(request, response) {
     try {
@@ -55,7 +111,7 @@ module.exports = {
           updatedFields: Object.keys(dataToUpdate) // Registra quais campos foram alterados
         }
       });
-      
+
       delete user.password; // Garante que a senha nunca seja retornada
       return response.json(user);
     } catch (error) {
@@ -91,7 +147,7 @@ module.exports = {
 
       // Verifica os logs de auditoria
       const auditLogs = await prisma.auditLog.findMany({ where: { userId: id } });
-      
+
       // A exclusão só é permitida se não houver logs, ou se houver apenas UM log e a ação for 'USER_CREATE'
       const canBeHardDeleted = auditLogs.length === 0 || (auditLogs.length === 1 && auditLogs[0].action === 'USER_CREATE');
 
@@ -105,7 +161,7 @@ module.exports = {
         if (auditLogs.length > 0) {
           await tx.auditLog.deleteMany({ where: { userId: id } });
         }
-        
+
         // 2. Agora, deleta o usuário
         await tx.user.delete({ where: { id: id } });
       });

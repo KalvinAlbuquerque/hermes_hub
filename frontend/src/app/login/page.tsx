@@ -1,7 +1,7 @@
 // Arquivo: frontend/src/app/login/page.tsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +16,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false); // Para desativar o botão durante o envio
 
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    // Se não estiver carregando e o usuário já estiver autenticado, redireciona
+    if (!loading && isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, loading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +51,15 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  if (loading || isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <p>Carregando...</p>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">

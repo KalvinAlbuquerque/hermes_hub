@@ -11,6 +11,7 @@ const EmailAccountController = require('./controllers/EmailAccountController');
 const CompanyController = require('./controllers/CompanyController');
 const CategoryController = require('./controllers/CategoryController');
 const BackupController = require('./controllers/BackupController');
+const { validate, createUserSchema } = require('./validators/userValidator');
 const multer = require('multer');
 
 
@@ -27,8 +28,7 @@ adminRoutes.delete('/profiles/:id', can('profiles:delete'), ProfileController.de
 
 // Usuários
 adminRoutes.get('/users', can('users:read'), UserController.index);
-// Note que para criar um usuário, usamos a rota pública /users, então não precisa de permissão aqui.
-// A rota de criação de usuários já está em legacyRoutes.js
+adminRoutes.post('/users', can('users:create'), validate(createUserSchema), UserController.create);
 adminRoutes.put('/users/:id', can('users:update'), UserController.update);
 adminRoutes.delete('/users/:id', can('users:delete'), UserController.destroy);
 
