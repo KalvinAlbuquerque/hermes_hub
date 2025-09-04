@@ -81,8 +81,7 @@ module.exports = {
     })) : [];
 
     const sender = await prisma.user.findUnique({ where: { id: senderId }, include: { profile: true } });
-    const canApprove = sender.profile.permissions?.canApproveNotifications;
-
+    const canApprove = sender.profile.permissions?.['notifications:approve'];
     const notificationData = {
       recipients: finalRecipients,
       subject: finalSubject,
@@ -255,25 +254,33 @@ module.exports = {
       attachments: finalAttachments,
     });
     // --- FIM DA CORREÇÃO ---
-
     if (result.success && result.messageId) {
       await prisma.notificationLog.update({
         where: { id: notification.id },
         data: { messageId: cleanMessageId(result.messageId) },
       });
+      // Adicione um retorno de sucesso
+      return { success: true };
     } else {
-      throw new Error("Falha ao enviar e-mail ou obter Message-ID.");
+      // Propague o erro para que a função que chamou possa lidar com ele
+      throw new Error(result.error?.message || "Falha ao enviar e-mail ou obter Message-ID.");
     }
   },
+
 
   async approve(request, response) {
     const { id } = request.params;
     const approverId = request.user.id;
     try {
       const notification = await prisma.notificationLog.findUnique({ where: { id } });
-      if (!notification || notification.status !== 'PENDING') { return response.status(404).json({ message: 'Notificação não encontrada ou já processada.' }); }
-      if (!notification.emailAccountId) { return response.status(500).json({ message: 'Erro: A notificação não tem uma conta de e-mail de envio associada.' }); }
+      if (!notification || notification.status !== 'PENDING') {
+        return response.status(404).json({ message: 'Notificação não encontrada ou já processada.' });
+      }
+      if (!notification.emailAccountId) {
+        return response.status(500).json({ message: 'Erro: A notificação não tem uma conta de e-mail de envio associada.' });
+      }
 
+      // Chama a função e verifica o resultado
       await module.exports.approveAndSend(notification);
 
       await prisma.notificationLog.update({
@@ -285,7 +292,8 @@ module.exports = {
     } catch (error) {
       console.error("Erro ao aprovar e enviar notificação:", error);
       await prisma.notificationLog.update({ where: { id }, data: { status: 'FAILED' } });
-      return response.status(500).json({ message: 'Erro ao enviar notificação.' });
+      // Retorna a mensagem de erro específica
+      return response.status(500).json({ message: `Erro ao enviar notificação: ${error.message}` });
     }
   },
 }
