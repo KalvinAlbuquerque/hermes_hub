@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import Modal from '@/components/Modal';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
-import { Trash } from 'lucide-react'; // Importa o ícone
+import { Trash } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -15,12 +15,27 @@ interface Profile {
   permissions: Record<string, boolean>;
 }
 
+// Lista de permissões atualizada com o novo modelo granular
 const availablePermissions = [
-  { id: 'canManageUsers', label: 'Gerenciar Usuários' },
-  { id: 'canManageProfiles', label: 'Gerenciar Perfis' },
-  { id: 'canManageTemplates', label: 'Gerenciar Templates' },
-  { id: 'canSendNotifications', label: 'Enviar Notificações' },
-  { id: 'canApproveNotifications', label: 'Aprovar Notificações' },
+    { id: 'users:read', label: 'Ver Usuários' },
+    { id: 'users:create', label: 'Criar Usuários' },
+    { id: 'users:update', label: 'Editar Usuários' },
+    { id: 'users:delete', label: 'Excluir Usuários' },
+    { id: 'profiles:read', label: 'Ver Perfis' },
+    { id: 'profiles:create', label: 'Criar Perfis' },
+    { id: 'profiles:update', label: 'Editar Perfis' },
+    { id: 'profiles:delete', label: 'Excluir Perfis' },
+    { id: 'templates:read', label: 'Ver Templates' },
+    { id: 'templates:write', label: 'Criar/Editar Templates' },
+    { id: 'templates:delete', label: 'Excluir Templates' },
+    { id: 'notifications:send', label: 'Enviar Notificações' },
+    { id: 'notifications:approve', label: 'Aprovar Notificações' },
+    { id: 'clientes:read', label: 'Ver Clientes' },
+    { id: 'clientes:write', label: 'Criar/Editar Clientes' },
+    { id: 'clientes:delete', label: 'Excluir Clientes' },
+    { id: 'audit:read', label: 'Ver Logs e Relatórios' },
+    { id: 'system:backup', label: 'Gerenciar Backups' },
+    { id: 'system:settings', label: 'Gerenciar Configurações do Sistema' },
 ];
 
 function ManageProfilesPage() {

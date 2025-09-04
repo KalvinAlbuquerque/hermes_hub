@@ -2,18 +2,21 @@
 const prisma = require('../database/prisma');
 
 /**
- * Middleware para verificar se o usuário tem uma permissão específica.
- * @param {string} permission - O nome da permissão necessária (ex: 'canManageUsers').
+ * Middleware para verificar se o usuário tem uma ou mais permissões.
+ * @param {...string} requiredPermissions - Uma ou mais strings de permissão necessárias (ex: 'users:read', 'users:create').
  */
-const can = (permission) => {
+const can = (...requiredPermissions) => {
   return async (request, response, next) => {
     const userId = request.user.id;
 
+    if (!userId) {
+        return response.status(401).json({ message: 'Acesso não autorizado: ID de usuário não encontrado no token.' });
+    }
+
     try {
-      // Busca o usuário e seu perfil com as permissões
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        include: {
+        select: {
           profile: {
             select: {
               permissions: true,
@@ -22,23 +25,25 @@ const can = (permission) => {
         },
       });
 
-      // Se o usuário não for encontrado ou não tiver perfil, nega o acesso
-      if (!user || !user.profile) {
-        return response.status(403).json({ message: 'Acesso negado: Perfil não encontrado.' });
+      if (!user || !user.profile || typeof user.profile.permissions !== 'object') {
+        return response.status(403).json({ message: 'Acesso negado: Perfil ou permissões não configurados.' });
       }
 
-      // Verifica se a permissão existe e está definida como 'true'
-      const hasPermission = user.profile.permissions?.[permission] === true;
+      const userPermissions = user.profile.permissions;
+      
+      // Verifica se TODAS as permissões necessárias estão presentes e são 'true'
+      const hasAllPermissions = requiredPermissions.every(
+        (permission) => userPermissions[permission] === true
+      );
 
-      if (!hasPermission) {
-        // --- ALTERAÇÃO AQUI ---
-        return response.status(403).json({ message: 'Você não tem permissão para acessar este recurso.' });
+      if (!hasAllPermissions) {
+        return response.status(403).json({ message: 'Você não tem permissão para executar esta ação.' });
       }
 
-      // Se tiver a permissão, continua para a próxima função (o controller)
       return next();
 
     } catch (error) {
+      console.error("Erro ao verificar permissões:", error);
       return response.status(500).json({ message: 'Erro interno ao verificar permissões.' });
     }
   };

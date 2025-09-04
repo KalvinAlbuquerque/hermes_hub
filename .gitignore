@@ -84,3 +84,4 @@ staticfiles/
 playwright-report/
 backend/public/attachments/*
 backend/public/uploads/*
+hermes_db_data/

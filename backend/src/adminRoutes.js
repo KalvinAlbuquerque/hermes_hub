@@ -19,52 +19,52 @@ const upload = multer({ storage: multer.memoryStorage() });
 const adminRoutes = Router();
 adminRoutes.use(authMiddleware); // Primeiro, garante que o usuário está logado
 
-// Perfis (Precisa de 'canManageProfiles')
-adminRoutes.post('/profiles', can('canManageProfiles'), ProfileController.create);
-adminRoutes.get('/profiles', can('canManageProfiles'), ProfileController.index);
-adminRoutes.put('/profiles/:id', can('canManageProfiles'), ProfileController.update);
-adminRoutes.delete('/profiles/:id', can('canManageProfiles'), ProfileController.destroy);
+// Perfis
+adminRoutes.post('/profiles', can('profiles:create'), ProfileController.create);
+adminRoutes.get('/profiles', can('profiles:read'), ProfileController.index);
+adminRoutes.put('/profiles/:id', can('profiles:update'), ProfileController.update);
+adminRoutes.delete('/profiles/:id', can('profiles:delete'), ProfileController.destroy);
 
-// Usuários (Precisa de 'canManageUsers')
-adminRoutes.get('/users', can('canManageUsers'), UserController.index);
-adminRoutes.put('/users/:id', can('canManageUsers'), UserController.update);
-adminRoutes.delete('/users/:id', can('canManageUsers'), UserController.destroy);
+// Usuários
+adminRoutes.get('/users', can('users:read'), UserController.index);
+// Note que para criar um usuário, usamos a rota pública /users, então não precisa de permissão aqui.
+// A rota de criação de usuários já está em legacyRoutes.js
+adminRoutes.put('/users/:id', can('users:update'), UserController.update);
+adminRoutes.delete('/users/:id', can('users:delete'), UserController.destroy);
 
-// Clientes (Vamos assumir que 'canManageUsers' também gerencia clientes)
-adminRoutes.post('/clientes', can('canManageUsers'), ClienteController.create);
-adminRoutes.get('/clientes', can('canManageUsers'), ClienteController.index);
-adminRoutes.put('/clientes/:id', can('canManageUsers'), ClienteController.update);
-adminRoutes.delete('/clientes/:id', can('canManageUsers'), ClienteController.destroy);
+// Clientes
+adminRoutes.post('/clientes', can('clientes:write'), ClienteController.create);
+adminRoutes.get('/clientes', can('clientes:read'), ClienteController.index);
+adminRoutes.put('/clientes/:id', can('clientes:write'), ClienteController.update);
+adminRoutes.delete('/clientes/:id', can('clientes:delete'), ClienteController.destroy);
 
-// Contas de E-mail e Templates (Precisa de 'canManageTemplates')
-adminRoutes.post('/email-accounts', can('canManageTemplates'), EmailAccountController.create);
-adminRoutes.get('/email-accounts', can('canManageTemplates'), EmailAccountController.index);
-adminRoutes.get('/email-accounts/:id', can('canManageTemplates'), EmailAccountController.show);
-adminRoutes.put('/email-accounts/:id', can('canManageTemplates'), EmailAccountController.update);
-adminRoutes.delete('/email-accounts/:id', can('canManageTemplates'), EmailAccountController.destroy);
-adminRoutes.post('/email-accounts/test-connection', can('canManageTemplates'), EmailAccountController.testConnection);
+// Contas de E-mail e Templates (agora parte de 'system:settings' e 'templates:write')
+adminRoutes.post('/email-accounts', can('system:settings'), EmailAccountController.create);
+adminRoutes.get('/email-accounts', can('system:settings'), EmailAccountController.index);
+adminRoutes.get('/email-accounts/:id', can('system:settings'), EmailAccountController.show);
+adminRoutes.put('/email-accounts/:id', can('system:settings'), EmailAccountController.update);
+adminRoutes.delete('/email-accounts/:id', can('system:settings'), EmailAccountController.destroy);
+adminRoutes.post('/email-accounts/test-connection', can('system:settings'), EmailAccountController.testConnection);
 
-// Categorias (Precisa de 'canManageTemplates')
-adminRoutes.post('/categories', can('canManageTemplates'), CategoryController.create);
-adminRoutes.get('/categories', can('canManageTemplates'), CategoryController.index);
-adminRoutes.put('/categories/:id', can('canManageTemplates'), CategoryController.update);
-adminRoutes.delete('/categories/:id', can('canManageTemplates'), CategoryController.destroy);
+// Categorias (agora parte de 'templates:write')
+adminRoutes.post('/categories', can('templates:write'), CategoryController.create);
+adminRoutes.get('/categories', can('templates:read'), CategoryController.index);
+adminRoutes.put('/categories/:id', can('templates:write'), CategoryController.update);
+adminRoutes.delete('/categories/:id', can('templates:delete'), CategoryController.destroy);
 
-// Gestão da Empresa (Vamos assumir que só quem pode gerenciar perfis pode gerenciar a empresa)
-adminRoutes.get('/company/settings', can('canManageProfiles'), CompanyController.getSettings);
-adminRoutes.post('/company/settings', can('canManageProfiles'), CompanyController.updateSettings);
-adminRoutes.post('/company/logo', can('canManageProfiles'), CompanyController.uploadMiddleware, CompanyController.processLogoUpload);
-adminRoutes.post('/company/test-imap', can('canManageProfiles'), CompanyController.testImapConnection);
+// Gestão da Empresa (agora 'system:settings')
+adminRoutes.get('/company/settings', can('system:settings'), CompanyController.getSettings);
+adminRoutes.post('/company/settings', can('system:settings'), CompanyController.updateSettings);
+adminRoutes.post('/company/logo', can('system:settings'), CompanyController.uploadMiddleware, CompanyController.processLogoUpload);
+adminRoutes.post('/company/test-imap', can('system:settings'), CompanyController.testImapConnection);
 
 // Rotas de Relatórios e Auditoria
-adminRoutes.get('/audit-logs', AuditLogController.index);
-adminRoutes.get('/reports/audit-logs/csv', ReportController.generateAuditLogsCSV);
-adminRoutes.get('/reports/audit-logs/pdf', ReportController.generateAuditLogsPDF);
+adminRoutes.get('/audit-logs', can('audit:read'), AuditLogController.index);
+adminRoutes.get('/reports/audit-logs/csv', can('audit:read'), ReportController.generateAuditLogsCSV);
+adminRoutes.get('/reports/audit-logs/pdf', can('audit:read'), ReportController.generateAuditLogsPDF);
 
-
-// Rotas de Backup e Restauração (Requer permissão de gerenciar perfis)
-adminRoutes.get('/backup', can('canManageProfiles'), BackupController.createBackup);
-adminRoutes.post('/restore', can('canManageProfiles'), upload.single('backupFile'), BackupController.restoreBackup);
-
+// Rotas de Backup e Restauração
+adminRoutes.get('/backup', can('system:backup'), BackupController.createBackup);
+adminRoutes.post('/restore', can('system:backup'), upload.single('backupFile'), BackupController.restoreBackup);
 
 module.exports = adminRoutes;

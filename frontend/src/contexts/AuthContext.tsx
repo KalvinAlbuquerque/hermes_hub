@@ -13,12 +13,15 @@ const getCookie = (name: string) => {
 };
 
 // 1. Defina uma interface para o objeto do usuário
+
 interface User {
   id: string;
   name: string;
   email: string;
+  profile: { // Adicionar o perfil
+    permissions: Record<string, boolean>;
+  };
 }
-
 interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;

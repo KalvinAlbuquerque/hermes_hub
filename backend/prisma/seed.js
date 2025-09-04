@@ -7,25 +7,62 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Iniciando o processo de seeding...');
 
-  // 1. Criar (ou garantir que existe) o Perfil Super Admin
+  // 1. Criar (ou garantir que existe) o Perfil Super Admin com todas as permissões
   const superAdminProfile = await prisma.profile.upsert({
     where: { name: 'Super Admin' },
-    update: {},
+    update: {
+      // Garante que o perfil existente seja atualizado com todas as permissões
+      permissions: {
+        'users:read': true,
+        'users:create': true,
+        'users:update': true,
+        'users:delete': true,
+        'profiles:read': true,
+        'profiles:create': true,
+        'profiles:update': true,
+        'profiles:delete': true,
+        'templates:read': true,
+        'templates:write': true,
+        'templates:delete': true,
+        'notifications:send': true,
+        'notifications:approve': true,
+        'clientes:read': true,
+        'clientes:write': true,
+        'clientes:delete': true,
+        'audit:read': true,
+        'system:backup': true,
+        'system:settings': true,
+      },
+    },
     create: {
       name: 'Super Admin',
       permissions: {
-        canManageUsers: true,
-        canManageProfiles: true,
-        canManageTemplates: true,
-        canSendNotifications: true,
-        canApproveNotifications: true,
+        // Permissões para um novo perfil
+        'users:read': true,
+        'users:create': true,
+        'users:update': true,
+        'users:delete': true,
+        'profiles:read': true,
+        'profiles:create': true,
+        'profiles:update': true,
+        'profiles:delete': true,
+        'templates:read': true,
+        'templates:write': true,
+        'templates:delete': true,
+        'notifications:send': true,
+        'notifications:approve': true,
+        'clientes:read': true,
+        'clientes:write': true,
+        'clientes:delete': true,
+        'audit:read': true,
+        'system:backup': true,
+        'system:settings': true,
       },
     },
   });
-  console.log(`Perfil "${superAdminProfile.name}" criado/confirmado.`);
+  console.log(`Perfil "${superAdminProfile.name}" criado/atualizado com todas as permissões.`);
 
   // 2. Criar (ou garantir que existe) o Usuário Super Admin
-  // Tenta ler a senha do .env, se não encontrar, usa 'admin123' como último recurso.
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
   console.log(`Usando a senha encontrada no ambiente para o usuário admin...`);
   
@@ -33,7 +70,10 @@ async function main() {
 
   const superAdminUser = await prisma.user.upsert({
     where: { email: 'admin@hermes.hub' },
-    update: {},
+    update: {
+      // Garante que o usuário admin esteja sempre associado ao perfil de Super Admin
+      profileId: superAdminProfile.id,
+    },
     create: {
       name: 'Administrador Padrão',
       email: 'admin@hermes.hub',
