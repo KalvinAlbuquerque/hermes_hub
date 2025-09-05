@@ -7,23 +7,29 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Modal from '@/components/Modal';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Trash, Clock, Repeat } from 'lucide-react';
+import { Trash, Clock, Repeat, FileText } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 
-// 1. Adicionar reminderSubject à interface
 interface Category {
   id: string;
   name: string;
-  reminderSubject: string; 
+  reminderSubject: string;
   reminderMode: 'INTERVAL' | 'SPECIFIC_TIME';
   reminderIntervalHours?: number;
   reminderSpecificTime?: string;
   reminderTemplateBody: string;
+  _count: {
+      templates: number;
+  };
 }
 
-// 2. Adicionar reminderSubject à interface do formulário
+interface Reference {
+    id: string;
+    name: string;
+}
+
 interface CategoryFormData {
   name: string;
   reminderSubject: string;
@@ -37,7 +43,9 @@ function ManageCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // 3. Adicionar valor inicial para reminderSubject no estado do formulário
+  const [isReferencesModalOpen, setIsReferencesModalOpen] = useState(false);
+  const [references, setReferences] = useState<Reference[]>([]);
+  const [selectedCategoryName, setSelectedCategoryName] = useState('');
   const [formData, setFormData] = useState<CategoryFormData>({
     name: '',
     reminderSubject: '[LEMBRETE] Pendência em Aberto: [ASSUNTO]',
@@ -67,7 +75,6 @@ function ManageCategoriesPage() {
   const handleOpenModal = (category: Category | null) => {
     if (category) {
       setEditingCategoryId(category.id);
-      // 4. Carregar o reminderSubject ao editar
       setFormData({
         name: category.name,
         reminderSubject: category.reminderSubject,
@@ -88,6 +95,17 @@ function ManageCategoriesPage() {
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleShowReferences = async (category: Category) => {
+    setSelectedCategoryName(category.name);
+    try {
+        const response = await api.get(`/categories/${category.id}/references`);
+        setReferences(response.data);
+        setIsReferencesModalOpen(true);
+    } catch (error) {
+        toast.error('Falha ao buscar referências.');
+    }
   };
 
   const handleDelete = (categoryId: string, categoryName: string) => {
@@ -144,22 +162,37 @@ function ManageCategoriesPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Nome</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Regra de Lembrete</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase"></th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Templates Vinculados</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {categories.map((category) => (
-                <tr key={category.id} onClick={() => handleOpenModal(category)} className="hover:bg-secondary/30 transition-colors cursor-pointer">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">{category.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                <tr key={category.id} className="hover:bg-secondary/30 transition-colors">
+                  <td onClick={() => handleOpenModal(category)} className="px-6 py-4 whitespace-nowrap text-sm text-foreground cursor-pointer">{category.name}</td>
+                  <td onClick={() => handleOpenModal(category)} className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground cursor-pointer">
                     {category.reminderMode === 'INTERVAL'
                       ? `A cada ${category.reminderIntervalHours} horas`
                       : `Diariamente às ${category.reminderSpecificTime}`
                     }
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <button
+                        onClick={() => handleShowReferences(category)}
+                        className="flex items-center gap-2 text-primary hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
+                        disabled={category._count.templates === 0}
+                    >
+                      <FileText size={16} />
+                      {category._count.templates}
+                    </button>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(category.id, category.name); }}
-                      className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-full">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(category.id, category.name); }}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={category._count.templates > 0}
+                        title={category._count.templates > 0 ? "Não é possível excluir uma categoria em uso" : "Excluir categoria"}
+                    >
                       <Trash size={16} />
                     </button>
                   </td>
@@ -171,60 +204,67 @@ function ManageCategoriesPage() {
       </div>
 
       <Modal title={editingCategoryId ? "Editar Categoria" : "Criar Nova Categoria"} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        {/* O formulário de edição/criação permanece o mesmo */}
         <form onSubmit={handleFormSubmit}>
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground">Nome da Categoria</label>
-              <input type="text" value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} className="input-style" required />
+            <div className="space-y-6">
+                <div>
+                <label className="block text-sm font-medium text-muted-foreground">Nome da Categoria</label>
+                <input type="text" value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} className="input-style" required />
+                </div>
+                <div>
+                <label className="block text-sm font-medium text-muted-foreground">Assunto do Lembrete</label>
+                <p className="text-xs text-muted-foreground mb-2">Use <strong>[ASSUNTO]</strong> e <strong>[PROTOCOLO]</strong> como variáveis.</p>
+                <input type="text" value={formData.reminderSubject} onChange={(e) => setFormData(p => ({ ...p, reminderSubject: e.target.value }))} className="input-style" required />
+                </div>
+                <div>
+                <label className="block text-sm font-medium text-muted-foreground">Modo de Lembrete</label>
+                <div className="mt-2 flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" value="INTERVAL" checked={formData.reminderMode === 'INTERVAL'} onChange={(e) => setFormData(p => ({ ...p, reminderMode: e.target.value as any }))} />
+                    <Repeat size={16} className="text-muted-foreground" /> Intervalo de Horas
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" value="SPECIFIC_TIME" checked={formData.reminderMode === 'SPECIFIC_TIME'} onChange={(e) => setFormData(p => ({ ...p, reminderMode: e.target.value as any }))} />
+                    <Clock size={16} className="text-muted-foreground" /> Hora Específica
+                    </label>
+                </div>
+                </div>
+                {formData.reminderMode === 'INTERVAL' && (
+                <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Enviar lembrete a cada (horas)</label>
+                    <input type="number" value={formData.reminderIntervalHours} onChange={(e) => setFormData(p => ({ ...p, reminderIntervalHours: e.target.value }))} className="input-style" required min="1" />
+                </div>
+                )}
+                {formData.reminderMode === 'SPECIFIC_TIME' && (
+                <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Enviar lembrete diariamente às</label>
+                    <input type="time" value={formData.reminderSpecificTime} onChange={(e) => setFormData(p => ({ ...p, reminderSpecificTime: e.target.value }))} className="input-style" required />
+                </div>
+                )}
+                <div>
+                <label className="block text-sm font-medium text-muted-foreground">Corpo do E-mail de Lembrete</label>
+                <p className="text-xs text-muted-foreground mb-2">Use a variável <strong>[PROTOCOLO]</strong> para inserir o número do incidente no texto.</p>
+                <TiptapEditor content={formData.reminderTemplateBody} onChange={(newContent) => setFormData(p => ({ ...p, reminderTemplateBody: newContent }))} />
+                </div>
             </div>
-
-            {/* 5. ADICIONAR O CAMPO DE INPUT NO FORMULÁRIO */}
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground">Assunto do Lembrete</label>
-              <p className="text-xs text-muted-foreground mb-2">Use <strong>[ASSUNTO]</strong> e <strong>[PROTOCOLO]</strong> como variáveis.</p>
-              <input type="text" value={formData.reminderSubject} onChange={(e) => setFormData(p => ({ ...p, reminderSubject: e.target.value }))} className="input-style" required />
+            <div className="flex justify-end gap-4 mt-8">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
+                <button type="submit" className="btn-primary">Salvar</button>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground">Modo de Lembrete</label>
-              <div className="mt-2 flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" value="INTERVAL" checked={formData.reminderMode === 'INTERVAL'} onChange={(e) => setFormData(p => ({ ...p, reminderMode: e.target.value as any }))} />
-                  <Repeat size={16} className="text-muted-foreground" /> Intervalo de Horas
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" value="SPECIFIC_TIME" checked={formData.reminderMode === 'SPECIFIC_TIME'} onChange={(e) => setFormData(p => ({ ...p, reminderMode: e.target.value as any }))} />
-                  <Clock size={16} className="text-muted-foreground" /> Hora Específica
-                </label>
-              </div>
-            </div>
-
-            {formData.reminderMode === 'INTERVAL' && (
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground">Enviar lembrete a cada (horas)</label>
-                <input type="number" value={formData.reminderIntervalHours} onChange={(e) => setFormData(p => ({ ...p, reminderIntervalHours: e.target.value }))} className="input-style" required min="1" />
-              </div>
-            )}
-
-            {formData.reminderMode === 'SPECIFIC_TIME' && (
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground">Enviar lembrete diariamente às</label>
-                <input type="time" value={formData.reminderSpecificTime} onChange={(e) => setFormData(p => ({ ...p, reminderSpecificTime: e.target.value }))} className="input-style" required />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground">Corpo do E-mail de Lembrete</label>
-              <p className="text-xs text-muted-foreground mb-2">Use a variável <strong>[PROTOCOLO]</strong> para inserir o número do incidente no texto.</p>
-              <TiptapEditor content={formData.reminderTemplateBody} onChange={(newContent) => setFormData(p => ({ ...p, reminderTemplateBody: newContent }))} />
-            </div>
-
-          </div>
-          <div className="flex justify-end gap-4 mt-8">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
-            <button type="submit" className="btn-primary">Salvar</button>
-          </div>
         </form>
+      </Modal>
+
+      <Modal title={`Templates na Categoria "${selectedCategoryName}"`} isOpen={isReferencesModalOpen} onClose={() => setIsReferencesModalOpen(false)}>
+        <div>
+            <ul className="space-y-2">
+                {references.map(ref => (
+                    <li key={ref.id} className="p-2 bg-secondary/50 rounded-md text-sm">{ref.name}</li>
+                ))}
+            </ul>
+            <div className="flex justify-end mt-6">
+                <button onClick={() => setIsReferencesModalOpen(false)} className="btn-secondary">Fechar</button>
+            </div>
+        </div>
       </Modal>
     </DashboardLayout>
   );

@@ -33,10 +33,15 @@ module.exports = {
   async index(request, response) {
     const profiles = await prisma.profile.findMany({
       orderBy: { name: 'asc' },
+      // Inclui a contagem de usuários diretamente na listagem
+      include: {
+        _count: {
+          select: { users: true },
+        },
+      },
     });
     return response.json(profiles);
   },
-
   // Atualizar um perfil
   async update(request, response) {
     try {
@@ -47,7 +52,7 @@ module.exports = {
         data: { name, permissions },
       });
 
-       await logAction({
+      await logAction({
         userId: request.user.id,
         action: 'PROFILE_UPDATE',
         details: { profileId: profile.id, newName: profile.name }
@@ -63,7 +68,7 @@ module.exports = {
   async destroy(request, response) {
     try {
       const { id } = request.params;
-      
+
       const usersInProfile = await prisma.user.count({ where: { profileId: id } });
       if (usersInProfile > 0) {
         return response.status(400).json({ message: 'Não é possível excluir um perfil que está em uso por um ou mais usuários.' });
@@ -82,11 +87,25 @@ module.exports = {
         // --- CORREÇÃO AQUI ---
         details: { deletedProfileId: id, deletedProfileName: profileToDelete.name }
       });
-      
+
       return response.status(204).send();
     } catch (error) {
       console.error("Erro ao deletar perfil:", error);
       return response.status(500).json({ message: 'Erro ao deletar perfil.' });
+    }
+  },
+
+   async getReferences(request, response) {
+    try {
+      const { id } = request.params;
+      const users = await prisma.user.findMany({
+        where: { profileId: id },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+      return response.json(users);
+    } catch (error) {
+      return response.status(500).json({ message: 'Erro ao buscar referências do perfil.' });
     }
   },
 

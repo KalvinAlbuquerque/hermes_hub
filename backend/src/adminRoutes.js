@@ -23,6 +23,7 @@ adminRoutes.use(authMiddleware); // Primeiro, garante que o usuário está logad
 // Perfis
 adminRoutes.post('/profiles', can('profiles:create'), ProfileController.create);
 adminRoutes.get('/profiles', can('profiles:read'), ProfileController.index);
+adminRoutes.get('/profiles/:id/references', can('profiles:read'), ProfileController.getReferences);
 adminRoutes.put('/profiles/:id', can('profiles:update'), ProfileController.update);
 adminRoutes.delete('/profiles/:id', can('profiles:delete'), ProfileController.destroy);
 
@@ -50,6 +51,7 @@ adminRoutes.post('/email-accounts/test-connection', can('system:settings'), Emai
 adminRoutes.post('/categories', can('templates:write'), CategoryController.create);
 adminRoutes.get('/categories', can('templates:read'), CategoryController.index);
 adminRoutes.put('/categories/:id', can('templates:write'), CategoryController.update);
+adminRoutes.get('/categories/:id/references', can('templates:read'), CategoryController.getReferences);
 adminRoutes.delete('/categories/:id', can('templates:delete'), CategoryController.destroy);
 
 // Gestão da Empresa (agora 'system:settings')

@@ -339,7 +339,7 @@ function ManageIncidentsPage() {
                                         <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{incident.protocol}</td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(incident.createdAt).toLocaleString('pt-BR')}</td>
                                         <td className="px-6 py-4 text-sm text-foreground">{incident.subject}</td>
-                                        <td className="px-6 py-4 text-sm text-muted-foreground">{incident.submittedByUser.name}</td>
+                                        <td className="px-6 py-4 text-sm text-muted-foreground">{incident.submittedByUser?.name || 'Usuário Removido'}</td>
                                         <td className="px-6 py-4 text-sm">
                                             <div className="flex items-center gap-2">
                                                 <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${incident.incidentStatus === 'OPEN' ? 'bg-yellow-500/20 text-yellow-500' :
@@ -473,8 +473,11 @@ function ManageIncidentsPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div><h3 className="text-sm font-medium text-muted-foreground">Protocolo</h3><p className="font-mono">{selectedIncidentDetails.protocol || 'N/A'}</p></div>
                             <div><h3 className="text-sm font-medium text-muted-foreground">Status</h3><p>{selectedIncidentDetails.status}</p></div>
-                            <div><h3 className="text-sm font-medium text-muted-foreground">Enviado por</h3><p>{selectedIncidentDetails.submittedByUser.name}</p></div>
-                            <div><h3 className="text-sm font-medium text-muted-foreground">Aprovado por</h3><p>{selectedIncidentDetails.approvedByUser?.name || 'N/A'}</p></div>
+                            <div><h3 className="text-sm font-medium text-muted-foreground">Enviado por</h3>
+                                <p>{selectedIncidentDetails.submittedByUser?.name || 'Usuário Removido'}</p>                            </div>
+                            <div><h3 className="text-sm font-medium text-muted-foreground">Aprovado por</h3>
+                            <p>{selectedIncidentDetails.approvedByUser?.name || 'N/A'}</p>
+                            </div>
                             <div className="col-span-2"><h3 className="text-sm font-medium text-muted-foreground">Assunto</h3><p>{selectedIncidentDetails.subject}</p></div>
                         </div>
 

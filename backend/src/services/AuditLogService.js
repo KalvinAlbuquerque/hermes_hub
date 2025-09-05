@@ -10,14 +10,23 @@ const prisma = require('../database/prisma');
  * @param {string} [logData.ipAddress] - O endereço IP da requisição.
  */
 async function logAction({ userId, action, details = null, ipAddress = null }) {
-  // Usamos um try...catch para garantir que uma falha no log de auditoria
-  // nunca quebre a funcionalidade principal da aplicação.
   try {
+    // Busca o nome do usuário ANTES de criar o log
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true }
+    });
+    const userName = user ? user.name : 'Usuário Desconhecido';
+
     await prisma.auditLog.create({
       data: {
         userId,
         action,
-        details,
+        // Salva uma cópia do nome do usuário diretamente no JSON de detalhes
+        details: {
+          ...details,
+          userNameAtTheTime: userName, // Grava o nome no momento da ação
+        },
         ipAddress,
       },
     });
