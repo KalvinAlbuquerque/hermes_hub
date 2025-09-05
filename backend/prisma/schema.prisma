@@ -66,11 +66,20 @@ model EmailAccount {
   id               String            @id @default(uuid())
   name             String            @unique
   email            String
-  smtpHost         String
-  smtpPort         Int
-  smtpUser         String
-  smtpPass         String
-  smtpSecure       Boolean           @default(true)
+  
+  // --- Campos Legados ---
+  smtpHost         String? // Agora opcional
+  smtpPort         Int?    // Agora opcional
+  smtpUser         String? // Agora opcional
+  smtpPass         String? // Agora opcional
+  smtpSecure       Boolean?          @default(true)
+
+  // --- Novos Campos para OAuth2 ---
+  authType         String            @default("PASSWORD") // PASSWORD ou OAUTH2
+  accessToken      String?
+  refreshToken     String?
+  tokenExpiresAt   DateTime?
+
   status           String            @default("ACTIVE")
   notificationLogs NotificationLog[]
   @@map("email_accounts")

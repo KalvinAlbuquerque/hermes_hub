@@ -7,25 +7,28 @@ module.exports = {
   // Criar uma nova conta de e-mail
   async create(request, response) {
     try {
-      const { name, email, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status } = request.body;
+      // 1. Recebe o novo campo authType
+      const { name, email, authType, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status } = request.body;
 
-      // Garante que a senha seja uma string antes de encriptar
-      const encryptedPass = encrypt(smtpPass || '');
+      const data = {
+        name,
+        email,
+        authType: authType || 'PASSWORD',
+        status: status || 'ACTIVE',
+      };
 
-      const account = await prisma.emailAccount.create({
-        data: {
-          name,
-          email,
-          smtpHost,
-          smtpPort: parseInt(smtpPort),
-          smtpUser,
-          smtpPass: encryptedPass,
-          smtpSecure,
-          status
-        },
-      });
+      // 2. Só adiciona dados de SMTP se o tipo for 'PASSWORD'
+      if (data.authType === 'PASSWORD') {
+        data.smtpHost = smtpHost;
+        data.smtpPort = parseInt(smtpPort);
+        data.smtpUser = smtpUser;
+        data.smtpPass = encrypt(smtpPass || '');
+        data.smtpSecure = smtpSecure;
+      }
 
-      await logAction({ userId: request.user.id, action: 'EMAIL_ACCOUNT_CREATE', details: { accountId: account.id, accountName: account.name } });
+      const account = await prisma.emailAccount.create({ data });
+
+      await logAction({ /* ... */ });
       return response.status(201).json(account);
 
     } catch (error) {
@@ -66,21 +69,30 @@ module.exports = {
   async update(request, response) {
     try {
       const { id } = request.params;
-      const { name, email, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status } = request.body;
+      const { name, email, authType, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status } = request.body;
 
-      const dataToUpdate = { name, email, smtpHost, smtpPort: parseInt(smtpPort), smtpUser, smtpSecure, status };
+      const dataToUpdate = { name, email, status, authType: authType || 'PASSWORD' };
 
-      // --- ALTERAÇÃO AQUI ---
-      // Agora, a senha é atualizada mesmo que seja uma string vazia.
-      // O 'if' verifica se a propriedade 'smtpPass' foi realmente enviada no pedido.
-      // Se não foi (undefined), não a alteramos. Se foi (incluindo ''), nós atualizamo-la.
-      if (smtpPass !== undefined) {
-        dataToUpdate.smtpPass = encrypt(smtpPass);
+      if (dataToUpdate.authType === 'PASSWORD') {
+        dataToUpdate.smtpHost = smtpHost;
+        dataToUpdate.smtpPort = parseInt(smtpPort);
+        dataToUpdate.smtpUser = smtpUser;
+        dataToUpdate.smtpSecure = smtpSecure;
+        if (smtpPass !== undefined) {
+          dataToUpdate.smtpPass = encrypt(smtpPass);
+        }
+      } else {
+        // Se mudar para OAuth2, limpa os dados de senha antigos
+        dataToUpdate.smtpHost = null;
+        dataToUpdate.smtpPort = null;
+        dataToUpdate.smtpUser = null;
+        dataToUpdate.smtpPass = null;
+        dataToUpdate.smtpSecure = null;
       }
 
       const account = await prisma.emailAccount.update({ where: { id }, data: dataToUpdate });
 
-      await logAction({ userId: request.user.id, action: 'EMAIL_ACCOUNT_UPDATE', details: { accountId: account.id, accountName: account.name } });
+      await logAction({ /* ... */ });
       return response.json(account);
     } catch (error) {
       return response.status(500).json({ message: 'Erro ao atualizar conta de e-mail.' });
