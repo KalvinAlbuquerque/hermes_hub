@@ -2,7 +2,7 @@
 const nodemailer = require('nodemailer');
 const prisma = require('../database/prisma');
 const { decrypt } = require('./SettingsService');
-const { createTransporter: createOAuth2Transporter, oauth2Client } = require('./OAuthService'); // Importar o serviço OAuth
+const { createTransporter: createOAuth2Transporter } = require('./OAuthService');
 
 async function sendMail({ to, cc, subject, html, accountId, attachments = [] }) {
   try {
@@ -14,10 +14,17 @@ async function sendMail({ to, cc, subject, html, accountId, attachments = [] }) 
 
     let transporter;
 
-    // Se a conta usa OAuth2
     if (account.authType === 'OAUTH2') {
-      const oauth2Client = createOAuth2Transporter(account);
-      const { token: accessToken } = await oauth2Client.getAccessToken(); // Atualiza o token se necessário
+      // --- INÍCIO DA CORREÇÃO ---
+      // Descriptografa o refreshToken antes de usá-lo
+      const decryptedAccount = {
+        ...account,
+        refreshToken: decrypt(account.refreshToken || '')
+      };
+      // --- FIM DA CORREÇÃO ---
+
+      const oauth2Client = createOAuth2Transporter(decryptedAccount);
+      const { token: accessToken } = await oauth2Client.getAccessToken();
 
       transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -26,12 +33,11 @@ async function sendMail({ to, cc, subject, html, accountId, attachments = [] }) 
           user: account.email,
           clientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
           clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-          refreshToken: account.refreshToken,
+          refreshToken: decryptedAccount.refreshToken, // Usa o token descriptografado
           accessToken,
         },
       });
     } else {
-      // Lógica existente para autenticação por senha
       const transporterOptions = {
         host: account.smtpHost,
         port: account.smtpPort,

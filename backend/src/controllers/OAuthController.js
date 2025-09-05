@@ -5,7 +5,6 @@ const { encrypt } = require('../services/SettingsService');
 const prisma = require('../database/prisma');
 
 module.exports = {
-  // ... (a função startAuth permanece a mesma)
   async startAuth(request, response) {
     const { accountData } = request.body;
     if (!accountData || (!accountData.id && !accountData.email)) {
