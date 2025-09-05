@@ -80,7 +80,8 @@ function SendNotificationPage() {
             const uniqueFields = [...new Set(fieldMatches)]
                 .filter(field =>
                     !field.toUpperCase().startsWith('[IMAGEM') &&
-                    field.toUpperCase() !== '[PROTOCOLO]' // <-- ADICIONADO AQUI
+                    field.toUpperCase() !== '[PROTOCOLO]' &&
+                    field.toUpperCase() !== '[ASSINATURA]'
                 )
                 .map(fieldName => {
                     const isRequired = fieldName.startsWith('[*');
@@ -99,7 +100,7 @@ function SendNotificationPage() {
         }
     }, [selectedTemplateId, templates]);
 
-    const handleGoToStep2 = () => {
+     const handleGoToStep2 = async () => {
         if (!selectedEmailAccountId) {
             toast.error('Por favor, selecione um remetente.');
             return;
@@ -126,17 +127,37 @@ function SendNotificationPage() {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (!selectedTemplate) return;
 
-        let newBody = selectedTemplate.body;
-        let newSubject = selectedTemplate.subject;
+        const loadingToast = toast.loading('A preparar pré-visualização...');
 
-        for (const field of templateFields) {
-            newBody = newBody.replaceAll(field.name, variables[field.key] || '');
-            newSubject = newSubject.replaceAll(field.name, variables[field.key] || '');
+        try {
+            // Busca os detalhes da conta de e-mail selecionada para obter a assinatura
+            const accountDetailsRes = await api.get(`/email-accounts/${selectedEmailAccountId}`);
+            const signature = accountDetailsRes.data.signature;
+
+            let newBody = selectedTemplate.body;
+            let newSubject = selectedTemplate.subject;
+
+            // Substitui as variáveis de texto preenchidas pelo usuário
+            for (const field of templateFields) {
+                newBody = newBody.replaceAll(field.name, variables[field.key] || '');
+                newSubject = newSubject.replaceAll(field.name, variables[field.key] || '');
+            }
+
+            // Substitui a palavra-chave [ASSINATURA] pelo conteúdo do banco de dados
+            if (signature) {
+                newBody = newBody.replace(/\[ASSINATURA\]/gi, signature);
+            } else {
+                newBody = newBody.replace(/\[ASSINATURA\]/gi, ''); // Limpa se não houver assinatura
+            }
+
+            setEditableBody(newBody);
+            setEditableSubject(newSubject);
+            toast.dismiss(loadingToast);
+            setStep(2);
+
+        } catch (error) {
+            toast.error('Falha ao buscar assinatura da conta de e-mail.', { id: loadingToast });
         }
-
-        setEditableBody(newBody);
-        setEditableSubject(newSubject);
-        setStep(2);
     };
 
     const handleClienteSelection = (clienteId: string) => { setSelectedClienteIds(prev => prev.includes(clienteId) ? prev.filter(id => id !== clienteId) : [...prev, clienteId]); };

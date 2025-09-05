@@ -235,25 +235,27 @@ module.exports = {
     });
 
     const protocol = notification.protocol || `HERMES-${notification.id.substring(0, 8).toUpperCase()}`;
+
+    // O corpo do e-mail (notification.body) já vem pronto do frontend com a assinatura.
+    // A única substituição necessária aqui é a do protocolo, que é gerado no backend.
     const finalHtmlBody = notification.body.replace(/\[PROTOCOLO\]/g, protocol);
     const finalSubject = notification.subject.replace(/\[PROTOCOLO\]/g, protocol);
+
     const companyEmailsSetting = await prisma.systemSetting.findUnique({ where: { key: 'companyCCEmails' } });
     let ccEmails = [];
     if (companyEmailsSetting && companyEmailsSetting.value) {
       ccEmails = companyEmailsSetting.value.split(',').map(email => email.trim()).filter(Boolean);
     }
 
-    // --- CORREÇÃO PRINCIPAL AQUI ---
-    // Trocamos 'bcc' por 'to'. Agora todos os destinatários se verão.
     const result = await sendMail({
-      to: notification.recipients, // Usamos TO para a lista principal
+      to: notification.recipients,
       cc: ccEmails.length > 0 ? ccEmails : undefined,
       subject: finalSubject,
       html: finalHtmlBody,
       accountId: notification.emailAccountId,
       attachments: finalAttachments,
     });
-    // --- FIM DA CORREÇÃO ---
+
     if (result.success && result.messageId) {
       await prisma.notificationLog.update({
         where: { id: notification.id },
@@ -266,7 +268,6 @@ module.exports = {
       throw new Error(result.error?.message || "Falha ao enviar e-mail ou obter Message-ID.");
     }
   },
-
 
   async approve(request, response) {
     const { id } = request.params;
