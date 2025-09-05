@@ -244,7 +244,7 @@ function ManageEmailAccountsPage() {
             </div>
 
             {/* Seletor de Tipo de Autenticação */}
-            <div>
+          {/*   <div>
               <label className="text-sm font-medium text-muted-foreground">Método de Autenticação</label>
               <div className="mt-2 grid grid-cols-2 gap-2 p-1 rounded-md bg-background border border-border">
                 <button type="button" onClick={() => setFormData(p => ({ ...p, authType: 'PASSWORD' }))}
@@ -256,7 +256,7 @@ function ManageEmailAccountsPage() {
                   <Globe size={16} /> OAuth2 (Google)
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Campos de Senha (condicional) */}
             {formData.authType === 'PASSWORD' && (

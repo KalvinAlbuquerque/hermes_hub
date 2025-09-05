@@ -359,7 +359,7 @@ function ManageIncidentsPage() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                             <ActionsDropdown
                                                 incident={incident}
                                                 openModal={(inc: Incident, type: 'close' | 'reopen' | 'history' | 'pause') => {
@@ -476,7 +476,7 @@ function ManageIncidentsPage() {
                             <div><h3 className="text-sm font-medium text-muted-foreground">Enviado por</h3>
                                 <p>{selectedIncidentDetails.submittedByUser?.name || 'Usuário Removido'}</p>                            </div>
                             <div><h3 className="text-sm font-medium text-muted-foreground">Aprovado por</h3>
-                            <p>{selectedIncidentDetails.approvedByUser?.name || 'N/A'}</p>
+                                <p>{selectedIncidentDetails.approvedByUser?.name || 'N/A'}</p>
                             </div>
                             <div className="col-span-2"><h3 className="text-sm font-medium text-muted-foreground">Assunto</h3><p>{selectedIncidentDetails.subject}</p></div>
                         </div>
