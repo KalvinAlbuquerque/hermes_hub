@@ -112,6 +112,7 @@ function ManualPage() {
                             <ul>
                                 <li><strong>`[PROTOCOLO]`</strong>: É substituída pelo número de protocolo único do incidente (ex: HERMES-A1B2C3D4). Ideal para ser usada no corpo e assunto de templates e lembretes.</li>
                                 <li><strong>`[ASSUNTO]`</strong>: É substituída pelo assunto da notificação original. Disponível **apenas** no campo "Assunto do Lembrete" na criação de uma Categoria de SLA.</li>
+                                        <li><strong>`[ASSINATURA]`</strong>: É substituída pela assinatura HTML configurada na conta de e-mail remetente. Ideal para padronizar o encerramento dos e-mails.</li>
                             </ul>
                             <h3 className="text-xl font-semibold text-foreground mt-6">Como Inserir e Referenciar Imagens</h3>
                             <p>

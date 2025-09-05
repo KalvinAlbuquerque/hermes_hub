@@ -65,6 +65,7 @@ model Template {
 model EmailAccount {
   id               String            @id @default(uuid())
   name             String            @unique
+  signature        String?           @db.Text
   email            String
   
   // --- Campos Legados ---

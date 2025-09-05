@@ -8,7 +8,9 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import Modal from '@/components/Modal';
 import { Trash, Globe, KeyRound } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
+const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 interface EmailAccount {
   id: string;
   name: string;
@@ -26,6 +28,7 @@ interface EmailAccountFormData {
   smtpPass: string;
   smtpSecure: boolean;
   status: 'ACTIVE' | 'INACTIVE';
+  signature?: string;
 }
 
 function ManageEmailAccountsPage() {
@@ -35,7 +38,7 @@ function ManageEmailAccountsPage() {
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<EmailAccountFormData>>({
-    name: '', email: '', authType: 'PASSWORD', smtpHost: '', smtpPort: 587, smtpUser: '', smtpPass: '', smtpSecure: true, status: 'ACTIVE'
+    name: '', email: '', authType: 'PASSWORD', smtpHost: '', smtpPort: 587, smtpUser: '', smtpPass: '', smtpSecure: true, status: 'ACTIVE', signature: ''
   });
 
   const fetchAccounts = useCallback(async () => {
@@ -244,7 +247,7 @@ function ManageEmailAccountsPage() {
             </div>
 
             {/* Seletor de Tipo de Autenticação */}
-          {/*   <div>
+            {/*   <div>
               <label className="text-sm font-medium text-muted-foreground">Método de Autenticação</label>
               <div className="mt-2 grid grid-cols-2 gap-2 p-1 rounded-md bg-background border border-border">
                 <button type="button" onClick={() => setFormData(p => ({ ...p, authType: 'PASSWORD' }))}
@@ -285,6 +288,17 @@ function ManageEmailAccountsPage() {
                 </div>
               </div>
             )}
+
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Assinatura do E-mail</label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Esta assinatura será adicionada ao final dos e-mails quando a palavra reservada <strong>[ASSINATURA]</strong> for usada no template.
+              </p>
+              <TiptapEditor
+                content={formData.signature || ''}
+                onChange={(newContent) => setFormData(prev => ({ ...prev, signature: newContent }))}
+              />
+            </div>
 
             {/* Campo de Status */}
             <div>

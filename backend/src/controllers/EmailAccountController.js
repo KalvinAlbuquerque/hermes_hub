@@ -8,13 +8,14 @@ module.exports = {
   async create(request, response) {
     try {
       // 1. Recebe o novo campo authType
-      const { name, email, authType, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status } = request.body;
+      const { name, email, authType, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status, signature } = request.body;
 
       const data = {
         name,
         email,
         authType: authType || 'PASSWORD',
         status: status || 'ACTIVE',
+        signature: signature || null,
       };
 
       // 2. Só adiciona dados de SMTP se o tipo for 'PASSWORD'
@@ -60,7 +61,7 @@ module.exports = {
     const { id } = request.params;
     const account = await prisma.emailAccount.findUnique({
       where: { id },
-      select: { id: true, name: true, email: true, status: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpSecure: true },
+      select: { id: true, name: true, email: true, status: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpSecure: true, signature: true, authType: true },
     });
     return response.json(account);
   },
@@ -69,9 +70,9 @@ module.exports = {
   async update(request, response) {
     try {
       const { id } = request.params;
-      const { name, email, authType, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status } = request.body;
+      const { name, email, authType, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, status, signature } = request.body;
 
-      const dataToUpdate = { name, email, status, authType: authType || 'PASSWORD' };
+      const dataToUpdate = { name, email, status, authType: authType || 'PASSWORD', signature };
 
       if (dataToUpdate.authType === 'PASSWORD') {
         dataToUpdate.smtpHost = smtpHost;
