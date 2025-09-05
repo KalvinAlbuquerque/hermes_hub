@@ -38,7 +38,7 @@ module.exports = {
 
       // --- 2. Top Templates ---
       const topTemplatesData = await prisma.notificationLog.groupBy({
-        where: dateFilter,
+        where: { ...dateFilter, templateId: { not: null } },
         by: ['templateId'],
         _count: { templateId: true },
         orderBy: { _count: { templateId: 'desc' } },
@@ -50,7 +50,7 @@ module.exports = {
         select: { id: true, name: true },
       });
       const topTemplates = topTemplatesData.map(item => ({
-        name: templates.find(t => t.id === item.templateId)?.name || 'Desconhecido',
+        name: templates.find(t => t.id === item.templateId)?.name || 'Template Removido',
         count: item._count.templateId,
       }));
 
@@ -77,7 +77,7 @@ module.exports = {
 
       // --- 4. Top Submissores (Geral) & Incidentes Abertos por Analista ---
       const topSubmittersData = await prisma.notificationLog.groupBy({
-        where: dateFilter,
+        where: { ...dateFilter, submittedByUserId: { not: null } },
         by: ['submittedByUserId'],
         _count: { submittedByUserId: true },
         orderBy: { _count: { submittedByUserId: 'desc' } },
@@ -85,7 +85,7 @@ module.exports = {
       });
 
       const openIncidentsByAnalystData = await prisma.notificationLog.groupBy({
-        where: { incidentStatus: 'OPEN', ...dateFilter },
+        where: { incidentStatus: 'OPEN', ...dateFilter, submittedByUserId: { not: null } },
         by: ['submittedByUserId'],
         _count: { submittedByUserId: true },
         orderBy: { _count: { submittedByUserId: 'desc' } },

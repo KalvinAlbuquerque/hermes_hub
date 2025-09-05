@@ -199,7 +199,7 @@ function LocalEventsPage() {
                     <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">
                       {new Date(log.createdAt).toLocaleString('pt-BR')}
                     </td>
-                    <td className="px-6 py-4 text-sm text-foreground whitespace-nowrap">{log.user.name}</td>
+                    <td className="px-6 py-4 text-sm text-foreground whitespace-nowrap">{log.user?.name || 'Usuário Removido'}</td>
                     <td className="px-6 py-4 text-sm text-foreground whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         {getActionIcon(log.action)}
@@ -233,7 +233,7 @@ function LocalEventsPage() {
             </div>
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">Usuário</h3>
-              <p className="text-foreground">{selectedLog.user.name}</p>
+              <p className="text-foreground">{selectedLog.user?.name || 'Usuário Removido'}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">Ação</h3>

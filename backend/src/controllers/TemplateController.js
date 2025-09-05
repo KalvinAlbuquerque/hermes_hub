@@ -95,27 +95,21 @@ module.exports = {
   },
 
   // Deletar um template
-  async destroy(request, response) {
+   async destroy(request, response) {
     try {
       const { id } = request.params;
-
-      const notificationsWithTemplate = await prisma.notificationLog.count({ where: { templateId: id } });
-      if (notificationsWithTemplate > 0) {
-        return response.status(400).json({ message: 'Não é possível excluir um template que já foi usado em notificações.' });
-      }
 
       const templateToDelete = await prisma.template.findUnique({ where: { id } });
       if (!templateToDelete) {
         return response.status(404).json({ message: 'Template não encontrado.' });
       }
 
+      // REMOVEMOS A VERIFICAÇÃO DE USO EM NOTIFICAÇÕES
       await prisma.template.delete({ where: { id } });
 
       await logAction({
         userId: request.user.id,
         action: 'TEMPLATE_DELETE',
-        // --- CORREÇÃO AQUI ---
-        // A variável correta é `templateToDelete`, não `profileToDelete`
         details: { deletedTemplateId: id, deletedTemplateName: templateToDelete.name }
       });
 

@@ -5,7 +5,7 @@ const { logAction } = require('../services/AuditLogService');
 const { validate, createUserSchema } = require('../validators/userValidator');
 module.exports = {
 
- async create(request, response) {
+  async create(request, response) {
     try {
       const { name, email, login, password, profileId } = request.body;
 
@@ -26,7 +26,7 @@ module.exports = {
         where: { id: request.user.id },
         select: { name: true }
       });
-      
+
       const actorName = actor ? actor.name : 'Sistema';
 
       // 2. Cria um objeto de detalhes mais descritivo
@@ -127,9 +127,9 @@ module.exports = {
     try {
       const { id } = request.params;
 
-      // Não permite que um usuário se auto-delete
+      // Mantém a proteção para não se auto-excluir
       if (id === request.user.id) {
-        return response.status(400).json({ message: 'Você не pode excluir a sua própria conta.' });
+        return response.status(400).json({ message: 'Você não pode excluir a sua própria conta.' });
       }
 
       const userToDelete = await prisma.user.findUnique({ where: { id } });
@@ -137,36 +137,11 @@ module.exports = {
         return response.status(404).json({ message: 'Usuário não encontrado.' });
       }
 
-      // Verifica se o usuário tem registros importantes associados
-      const submittedNotifications = await prisma.notificationLog.count({ where: { submittedByUserId: id } });
-      const createdTemplates = await prisma.template.count({ where: { authorId: id } });
+      // REMOVEMOS AS VERIFICAÇÕES DE HISTÓRICO DAQUI
+      // Agora, a exclusão é tentada diretamente
+      await prisma.user.delete({ where: { id: id } });
 
-      if (submittedNotifications > 0 || createdTemplates > 0) {
-        return response.status(400).json({ message: 'Não é possível excluir um usuário que já criou templates ou enviou notificações.' });
-      }
-
-      // Verifica os logs de auditoria
-      const auditLogs = await prisma.auditLog.findMany({ where: { userId: id } });
-
-      // A exclusão só é permitida se não houver logs, ou se houver apenas UM log e a ação for 'USER_CREATE'
-      const canBeHardDeleted = auditLogs.length === 0 || (auditLogs.length === 1 && auditLogs[0].action === 'USER_CREATE');
-
-      if (!canBeHardDeleted) {
-        return response.status(400).json({ message: 'Não é possível excluir este usuário pois ele já realizou outras ações no sistema.' });
-      }
-
-      // Usamos uma transação para garantir que ambas as operações (apagar logs e usuário) funcionem ou falhem juntas
-      await prisma.$transaction(async (tx) => {
-        // 1. Deleta os logs de auditoria associados (que sabemos que são seguros para deletar neste ponto)
-        if (auditLogs.length > 0) {
-          await tx.auditLog.deleteMany({ where: { userId: id } });
-        }
-
-        // 2. Agora, deleta o usuário
-        await tx.user.delete({ where: { id: id } });
-      });
-
-      // Loga a ação de exclusão (realizada pelo admin logado)
+      // O log da ação de exclusão é mantido
       await logAction({
         userId: request.user.id,
         action: 'USER_DELETE',
@@ -176,7 +151,12 @@ module.exports = {
       return response.status(204).send();
     } catch (error) {
       console.error("Erro ao deletar usuário:", error);
+      // Fallback para caso o DB restrinja por algum motivo (ex: perfil ainda associado)
+      if (error.code === 'P2003') {
+        return response.status(400).json({ message: 'Este usuário não pode ser excluído pois está associado a um perfil. Remova a associação antes de tentar novamente.' });
+      }
       return response.status(500).json({ message: 'Erro interno ao deletar usuário.' });
     }
   },
 };
+

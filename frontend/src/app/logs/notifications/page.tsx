@@ -219,8 +219,8 @@ function NotificationsLogPage() {
                 <tr key={log.id} onClick={() => handleRowClick(log.id)} className="hover:bg-secondary/30 transition-colors cursor-pointer">
                   <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">{new Date(log.createdAt).toLocaleString('pt-BR')}</td>
                   <td className="px-6 py-4 text-sm text-foreground">{log.subject}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{log.template.name}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{log.submittedByUser.name}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{log.template?.name || 'Template Removido'}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{log.submittedByUser?.name || 'Usuário Removido'}</td>
                   <td className="px-6 py-4 text-sm"><StatusBadge status={log.status} /></td>
                 </tr>
               ))}
@@ -245,8 +245,12 @@ function NotificationsLogPage() {
               <div><h3 className="text-sm font-medium text-muted-foreground">Status</h3><p><StatusBadge status={selectedLog.status} /></p></div>
               <div><h3 className="text-sm font-medium text-muted-foreground">Protocolo</h3><p className="font-mono">{selectedLog.protocol || 'N/A'}</p></div>
               <div><h3 className="text-sm font-medium text-muted-foreground">Conta de Envio</h3><p>{selectedLog.emailAccount?.name} ({selectedLog.emailAccount?.email})</p></div>
-              <div><h3 className="text-sm font-medium text-muted-foreground">Enviado por</h3><p>{selectedLog.submittedByUser.name}</p></div>
-              <div><h3 className="text-sm font-medium text-muted-foreground">Aprovado por</h3><p>{selectedLog.approvedByUser?.name || 'N/A'}</p></div>
+              <div><h3 className="text-sm font-medium text-muted-foreground">Enviado por</h3>
+                <p>{selectedLog.submittedByUser?.name || 'Usuário Removido'}</p>
+              </div>
+              <div><h3 className="text-sm font-medium text-muted-foreground">Aprovado por</h3>
+              <p>{selectedLog.approvedByUser?.name || 'N/A'}</p>
+              </div>
 
               <div className="col-span-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Destinatários</h3>

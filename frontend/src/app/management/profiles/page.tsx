@@ -7,15 +7,22 @@ import api from '@/lib/api';
 import Modal from '@/components/Modal';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
-import { Trash } from 'lucide-react';
+import { Trash, Users } from 'lucide-react'; // Importe o ícone Users
 
 interface Profile {
   id: string;
   name: string;
   permissions: Record<string, boolean>;
+  _count: {
+    users: number;
+  };
 }
 
-// Lista de permissões atualizada com o novo modelo granular
+interface Reference {
+  id: string;
+  name: string;
+}
+
 const availablePermissions = [
     { id: 'users:read', label: 'Ver Usuários' },
     { id: 'users:create', label: 'Criar Usuários' },
@@ -42,6 +49,9 @@ function ManageProfilesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isReferencesModalOpen, setIsReferencesModalOpen] = useState(false);
+  const [references, setReferences] = useState<Reference[]>([]);
+  const [selectedProfileName, setSelectedProfileName] = useState('');
   const [formData, setFormData] = useState<{ name: string; permissions: Record<string, boolean> }>({ name: '', permissions: {} });
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
@@ -71,6 +81,17 @@ function ManageProfilesPage() {
       setFormData({ name: '', permissions: initialPermissions });
     }
     setIsModalOpen(true);
+  };
+
+  const handleShowReferences = async (profile: Profile) => {
+    setSelectedProfileName(profile.name);
+    try {
+        const response = await api.get(`/profiles/${profile.id}/references`);
+        setReferences(response.data);
+        setIsReferencesModalOpen(true);
+    } catch (error) {
+        toast.error('Falha ao buscar referências.');
+    }
   };
 
   const handleDelete = (profileId: string, profileName: string) => {
@@ -140,16 +161,31 @@ function ManageProfilesPage() {
             <thead className="bg-secondary/50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Nome</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase"></th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuários Vinculados</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {profiles.map((profile) => (
-                <tr key={profile.id} onClick={() => handleOpenModal(profile)} className="hover:bg-secondary/30 transition-colors cursor-pointer">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">{profile.name}</td>
+                <tr key={profile.id} className="hover:bg-secondary/30 transition-colors">
+                  <td onClick={() => handleOpenModal(profile)} className="px-6 py-4 whitespace-nowrap text-sm text-foreground cursor-pointer">{profile.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <button
+                      onClick={() => handleShowReferences(profile)}
+                      className="flex items-center gap-2 text-primary hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
+                      disabled={profile._count.users === 0}
+                    >
+                      <Users size={16} />
+                      {profile._count.users}
+                    </button>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(profile.id, profile.name); }} 
-                            className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-full">
+                    <button
+                        onClick={() => handleDelete(profile.id, profile.name)}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={profile._count.users > 0}
+                        title={profile._count.users > 0 ? "Não é possível excluir um perfil em uso" : "Excluir perfil"}
+                    >
                       <Trash size={16} />
                     </button>
                   </td>
@@ -161,36 +197,50 @@ function ManageProfilesPage() {
       </div>
 
       <Modal title={editingProfileId ? "Editar Perfil" : "Criar Novo Perfil"} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        {/* O conteúdo do formulário de edição/criação permanece o mesmo */}
         <form onSubmit={handleFormSubmit}>
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-sm font-medium text-muted-foreground">Nome do Perfil</label>
-            <input
-              type="text" name="name" id="name" value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="input-style" required
-            />
-          </div>
-          <div className="mb-4">
-            <h3 className="block text-sm font-medium text-muted-foreground">Permissões</h3>
-            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availablePermissions.map(p => (
-                <div key={p.id} className="flex items-center">
-                  <input
-                    id={p.id} name={p.id} type="checkbox"
-                    checked={!!formData.permissions[p.id]}
-                    onChange={() => handlePermissionChange(p.id)}
-                    className="h-4 w-4 text-primary bg-input border-border rounded focus:ring-ring"
-                  />
-                  <label htmlFor={p.id} className="ml-2 block text-sm text-foreground">{p.label}</label>
-                </div>
-              ))}
+            <div className="mb-4">
+                <label htmlFor="name" className="block text-sm font-medium text-muted-foreground">Nome do Perfil</label>
+                <input
+                type="text" name="name" id="name" value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="input-style" required
+                />
             </div>
-          </div>
-          <div className="flex justify-end gap-4 mt-6">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
-            <button type="submit" className="btn-primary">Salvar</button>
-          </div>
+            <div className="mb-4">
+                <h3 className="block text-sm font-medium text-muted-foreground">Permissões</h3>
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {availablePermissions.map(p => (
+                    <div key={p.id} className="flex items-center">
+                    <input
+                        id={p.id} name={p.id} type="checkbox"
+                        checked={!!formData.permissions[p.id]}
+                        onChange={() => handlePermissionChange(p.id)}
+                        className="h-4 w-4 text-primary bg-input border-border rounded focus:ring-ring"
+                    />
+                    <label htmlFor={p.id} className="ml-2 block text-sm text-foreground">{p.label}</label>
+                    </div>
+                ))}
+                </div>
+            </div>
+            <div className="flex justify-end gap-4 mt-6">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
+                <button type="submit" className="btn-primary">Salvar</button>
+            </div>
         </form>
+      </Modal>
+
+      <Modal title={`Usuários no Perfil "${selectedProfileName}"`} isOpen={isReferencesModalOpen} onClose={() => setIsReferencesModalOpen(false)}>
+        <div>
+            <ul className="space-y-2">
+                {references.map(ref => (
+                    <li key={ref.id} className="p-2 bg-secondary/50 rounded-md text-sm">{ref.name}</li>
+                ))}
+            </ul>
+            <div className="flex justify-end mt-6">
+                <button onClick={() => setIsReferencesModalOpen(false)} className="btn-secondary">Fechar</button>
+            </div>
+        </div>
       </Modal>
     </DashboardLayout>
   );

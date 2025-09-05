@@ -31,14 +31,14 @@ interface Notification {
 
 // Componente de Badge de Status
 const StatusBadge = ({ status }: { status: string }) => {
-    const statusStyles: { [key: string]: string } = {
-        PENDING: 'bg-yellow-500/20 text-yellow-500', // Alterado para combinar com o dashboard
-    };
-    return (
-        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[status] || 'bg-secondary'}`}>
-            PENDENTE
-        </span>
-    );
+  const statusStyles: { [key: string]: string } = {
+    PENDING: 'bg-yellow-500/20 text-yellow-500', // Alterado para combinar com o dashboard
+  };
+  return (
+    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[status] || 'bg-secondary'}`}>
+      PENDENTE
+    </span>
+  );
 };
 
 function ApprovalsPage() {
@@ -68,9 +68,9 @@ function ApprovalsPage() {
 
   const handleViewNotification = async (notificationId: string) => {
     try {
-        const response = await api.get(`/logs/notifications/${notificationId}`);
-        setSelectedNotification(response.data);
-        setIsModalOpen(true);
+      const response = await api.get(`/logs/notifications/${notificationId}`);
+      setSelectedNotification(response.data);
+      setIsModalOpen(true);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Falha ao carregar os dados.';
       toast.error(errorMessage);
@@ -93,8 +93,8 @@ function ApprovalsPage() {
 
   const handleReject = () => {
     if (!selectedNotification || !rejectionReason) {
-        toast.error("A justificativa é obrigatória.");
-        return;
+      toast.error("A justificativa é obrigatória.");
+      return;
     }
     toast.promise(
       api.post(`/notifications/${selectedNotification.id}/reject`, { reason: rejectionReason }).then(() => {
@@ -136,8 +136,8 @@ function ApprovalsPage() {
               {notifications.length > 0 ? (
                 notifications.map((n) => (
                   <tr key={n.id} onClick={() => handleViewNotification(n.id)} className="hover:bg-secondary/30 transition-colors cursor-pointer">
-                    <td className="px-6 py-4 text-sm text-foreground">{n.submittedByUser.name}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{n.template.name}</td>
+                    <td className="px-6 py-4 text-sm text-foreground">{n.submittedByUser?.name || 'Usuário Removido'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{n.template?.name || 'Template Removido'}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{n.subject}</td>
                     <td className="px-6 py-4 text-sm"><StatusBadge status={n.status} /></td>
                   </tr>
@@ -156,22 +156,22 @@ function ApprovalsPage() {
             {!isRejecting ? (
               <>
                 <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-border">
-                  <div><h4 className="font-semibold text-sm text-muted-foreground">Enviado Por</h4><p>{selectedNotification.submittedByUser.name}</p></div>
-                  <div><h4 className="font-semibold text-sm text-muted-foreground">Template</h4><p>{selectedNotification.template.name}</p></div>
+                  <div><h4 className="font-semibold text-sm text-muted-foreground">Enviado Por</h4><p>{selectedNotification.submittedByUser?.name || 'Usuário Removido'}</p></div>
+                  <div><h4 className="font-semibold text-sm text-muted-foreground">Template</h4><p>{selectedNotification.template?.name || 'Template Removido'}</p></div>
                 </div>
 
                 {/* Bloco de Destinatários */}
                 <div className="mb-4 pb-4 border-b border-border">
-                    <h4 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Destinatários ({selectedNotification.recipients.length})
-                    </h4>
-                    <div className="mt-2 p-2 text-xs bg-background rounded-md max-h-24 overflow-y-auto border border-border">
-                        {selectedNotification.clientes && selectedNotification.clientes.length > 0 && (
-                            <p className="font-bold mb-1">Clientes: {selectedNotification.clientes.map(c => c.name).join(', ')}</p>
-                        )}
-                        <p className="whitespace-pre-wrap break-words">{selectedNotification.recipients.join(', ')}</p>
-                    </div>
+                  <h4 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Destinatários ({selectedNotification.recipients.length})
+                  </h4>
+                  <div className="mt-2 p-2 text-xs bg-background rounded-md max-h-24 overflow-y-auto border border-border">
+                    {selectedNotification.clientes && selectedNotification.clientes.length > 0 && (
+                      <p className="font-bold mb-1">Clientes: {selectedNotification.clientes.map(c => c.name).join(', ')}</p>
+                    )}
+                    <p className="whitespace-pre-wrap break-words">{selectedNotification.recipients.join(', ')}</p>
+                  </div>
                 </div>
 
                 {/* Bloco de Anexos */}
@@ -190,10 +190,10 @@ function ApprovalsPage() {
                 )}
 
                 <div className="mb-4 pb-4">
-                    <h4 className="font-semibold text-sm text-muted-foreground">Pré-visualização do Corpo</h4>
-                    <div className="mt-2 p-4 border border-border rounded-md bg-background max-h-60 overflow-y-auto">
-                        <div className="prose prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: selectedNotification.body }} />
-                    </div>
+                  <h4 className="font-semibold text-sm text-muted-foreground">Pré-visualização do Corpo</h4>
+                  <div className="mt-2 p-4 border border-border rounded-md bg-background max-h-60 overflow-y-auto">
+                    <div className="prose prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: selectedNotification.body }} />
+                  </div>
                 </div>
                 <div className="flex justify-end gap-4 mt-6">
                   <button type="button" onClick={() => setIsRejecting(true)} className="btn-destructive">Rejeitar</button>
@@ -205,8 +205,8 @@ function ApprovalsPage() {
                 <label htmlFor="rejectionReason" className="block text-sm font-medium text-muted-foreground">Descreva o motivo da rejeição:</label>
                 <textarea id="rejectionReason" rows={5} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} className="input-style w-full mt-2" required></textarea>
                 <div className="flex justify-end gap-4 mt-6">
-                   <button type="button" onClick={() => setIsRejecting(false)} className="btn-secondary">Voltar</button>
-                   <button type="button" onClick={handleReject} className="btn-destructive">Confirmar Rejeição</button>
+                  <button type="button" onClick={() => setIsRejecting(false)} className="btn-secondary">Voltar</button>
+                  <button type="button" onClick={handleReject} className="btn-destructive">Confirmar Rejeição</button>
                 </div>
               </div>
             )}

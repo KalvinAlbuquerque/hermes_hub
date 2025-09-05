@@ -33,13 +33,34 @@ module.exports = {
   // Listar todas as categorias
   async index(request, response) {
     try {
-      const categories = await prisma.category.findMany({ orderBy: { name: 'asc' } });
+      const categories = await prisma.category.findMany({
+        orderBy: { name: 'asc' },
+        // Inclui a contagem de templates diretamente na listagem
+        include: {
+          _count: {
+            select: { templates: true },
+          },
+        },
+      });
       return response.json(categories);
     } catch (error) {
-        return response.status(500).json({ message: 'Erro ao listar categorias.' });
+      return response.status(500).json({ message: 'Erro ao listar categorias.' });
     }
   },
 
+  async getReferences(request, response) {
+    try {
+      const { id } = request.params;
+      const templates = await prisma.template.findMany({
+        where: { categoryId: id },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+      return response.json(templates);
+    } catch (error) {
+      return response.status(500).json({ message: 'Erro ao buscar referências da categoria.' });
+    }
+  },
   // Atualizar uma categoria
   async update(request, response) {
     try {
@@ -49,12 +70,12 @@ module.exports = {
       const category = await prisma.category.update({
         where: { id },
         data: {
-            name,
-            reminderSubject, // <-- 2. ADICIONAR O CAMPO AQUI
-            reminderMode,
-            reminderIntervalHours: reminderIntervalHours ? parseInt(reminderIntervalHours) : null,
-            reminderSpecificTime,
-            reminderTemplateBody,
+          name,
+          reminderSubject, // <-- 2. ADICIONAR O CAMPO AQUI
+          reminderMode,
+          reminderIntervalHours: reminderIntervalHours ? parseInt(reminderIntervalHours) : null,
+          reminderSpecificTime,
+          reminderTemplateBody,
         },
       });
 
@@ -69,14 +90,14 @@ module.exports = {
   async destroy(request, response) {
     try {
       const { id } = request.params;
-      
+
       const templatesInCategory = await prisma.template.count({ where: { categoryId: id } });
       if (templatesInCategory > 0) {
         return response.status(400).json({ message: 'Não é possível excluir uma categoria que está em uso por um ou mais templates.' });
       }
 
       const categoryToDelete = await prisma.category.findUnique({ where: { id } });
-      if(!categoryToDelete) return response.status(404).send();
+      if (!categoryToDelete) return response.status(404).send();
 
       await prisma.category.delete({ where: { id } });
 
