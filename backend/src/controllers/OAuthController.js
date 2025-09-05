@@ -1,49 +1,54 @@
 // Arquivo: backend/src/controllers/OAuthController.js
-const jwt = require('jsonwebtoken'); // NOVO
-const { generateAuthUrl, getTokens } = require('../services/OAuthService');
+const jwt = require('jsonwebtoken');
+const { getTokens } = require('../services/OAuthService');
 const { encrypt } = require('../services/SettingsService');
 const prisma = require('../database/prisma');
 
 module.exports = {
+  // ... (a função startAuth permanece a mesma)
   async startAuth(request, response) {
-    // ALTERADO: Recebe os dados completos da conta
     const { accountData } = request.body;
     if (!accountData || (!accountData.id && !accountData.email)) {
       return response.status(400).json({ message: 'Dados da conta de e-mail são obrigatórios.' });
     }
+    const { generateAuthUrl } = require('../services/OAuthService'); // Movido para dentro para evitar dependência circular se houver
     const authUrl = generateAuthUrl(accountData);
     return response.json({ authUrl });
   },
 
   async handleCallback(request, response) {
-    // ALTERADO: O 'state' agora é um token JWT
     const { code, state: stateToken } = request.query;
 
     try {
-      // 1. Verifica o token JWT do estado
       const decodedState = jwt.verify(stateToken, process.env.JWT_SECRET);
       const { id: emailAccountId, name, email, authType } = decodedState;
 
-      // 2. Obtém os tokens do Google
       const tokens = await getTokens(code);
 
-      // 3. Prepara os dados para salvar
+      // --- INÍCIO DA CORREÇÃO ---
+      // Prepara os dados que SEMPRE serão atualizados
       const accountDbData = {
         accessToken: encrypt(tokens.access_token),
-        refreshToken: encrypt(tokens.refresh_token),
         tokenExpiresAt: new Date(tokens.expiry_date),
         status: 'ACTIVE'
       };
-      
-      // 4. Se for uma nova conta, adiciona os dados do state. Se for existente, apenas atualiza.
+
+      // SÓ atualiza o refreshToken se um NOVO for recebido do Google
+      if (tokens.refresh_token) {
+        accountDbData.refreshToken = encrypt(tokens.refresh_token);
+      }
+      // --- FIM DA CORREÇÃO ---
+
       if (emailAccountId) {
-        // Atualiza uma conta existente (reconectar)
         await prisma.emailAccount.update({
           where: { id: emailAccountId },
           data: accountDbData,
         });
       } else {
-        // Cria uma nova conta
+        // Se for uma conta nova, o refresh_token é obrigatório
+        if (!accountDbData.refreshToken) {
+            throw new Error("Refresh token não foi recebido do Google na primeira autorização.");
+        }
         await prisma.emailAccount.create({
           data: {
             ...accountDbData,
@@ -53,8 +58,7 @@ module.exports = {
           },
         });
       }
-      
-      // Retorna uma página simples para fechar a janela pop-up e notificar o pai
+
       return response.send("<script>window.opener.postMessage('auth-success', '*'); window.close();</script>");
 
     } catch (error) {
