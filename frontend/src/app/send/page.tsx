@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
-import { Upload, X, Paperclip } from 'lucide-react';
+import { Upload, X, Paperclip, Sun, Moon } from 'lucide-react';
 
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 
@@ -21,19 +21,19 @@ interface TemplateVariable {
 }
 
 const convertToCidHtml = (html: string): string => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const images = doc.querySelectorAll('img[data-cid]');
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const images = doc.querySelectorAll('img[data-cid]');
 
-  images.forEach(img => {
-    const cid = img.getAttribute('data-cid');
-    if (cid) {
-      img.setAttribute('src', `cid:${cid}`);
-      img.removeAttribute('data-cid');
-    }
-  });
+    images.forEach(img => {
+        const cid = img.getAttribute('data-cid');
+        if (cid) {
+            img.setAttribute('src', `cid:${cid}`);
+            img.removeAttribute('data-cid');
+        }
+    });
 
-  return doc.body.innerHTML;
+    return doc.body.innerHTML;
 };
 
 function SendNotificationPage() {
@@ -51,7 +51,7 @@ function SendNotificationPage() {
     const [editableBody, setEditableBody] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
     const [templateFields, setTemplateFields] = useState<TemplateVariable[]>([]);
-
+    const [editorTheme, setEditorTheme] = useState('dark');
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -100,7 +100,7 @@ function SendNotificationPage() {
         }
     }, [selectedTemplateId, templates]);
 
-     const handleGoToStep2 = async () => {
+    const handleGoToStep2 = async () => {
         if (!selectedEmailAccountId) {
             toast.error('Por favor, selecione um remetente.');
             return;
@@ -172,7 +172,7 @@ function SendNotificationPage() {
             setStep(2);
             return;
         }
-         if (editableBody.trim() === '' || editableBody.trim() === '<p></p>') {
+        if (editableBody.trim() === '' || editableBody.trim() === '<p></p>') {
             toast.error("O corpo do e-mail não pode estar vazio.");
             setStep(2);
             return;
@@ -222,7 +222,7 @@ function SendNotificationPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-muted-foreground">Template</label>
-                                        <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value) } className="input-style" required>
+                                        <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)} className="input-style" required>
                                             <option value="">-- Escolha um template --</option>
                                             {templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
                                         </select>
@@ -309,7 +309,7 @@ function SendNotificationPage() {
                     )}
 
                     {step === 2 && (
-                        <div>
+                        <div className={editorTheme === 'light' ? 'light-theme' : ''}>
                             <h2 className="text-xl font-semibold text-foreground">Passo 2: Edição do Conteúdo</h2>
                             <p className="text-sm text-muted-foreground mt-1">Ajuste o texto final do assunto e do corpo do e-mail. Cole imagens diretamente no editor.</p>
                             <div className="space-y-6 mt-6">
@@ -319,6 +319,9 @@ function SendNotificationPage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-muted-foreground">Corpo do E-mail</label>
+                                    <button type="button" onClick={() => setEditorTheme(editorTheme === 'dark' ? 'light' : 'dark')} className="p-1 rounded-md hover:bg-secondary">
+                                        <Sun size={16} />
+                                    </button>
                                     <div className="mt-1">
                                         <TiptapEditor content={editableBody} onChange={(newContent) => setEditableBody(newContent)} />
                                     </div>

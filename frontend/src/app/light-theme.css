@@ -1,0 +1,67 @@
+/* frontend/src/app/light-theme.css */
+.light-theme .input-style,
+.light-theme .prose {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #e5e7eb;
+}
+
+.light-theme .prose h1,
+.light-theme .prose h2,
+.light-theme .prose h3,
+.light-theme .prose p,
+.light-theme .prose strong,
+.light-theme .prose blockquote {
+  color: #000000;
+}
+
+.light-theme .input-style::placeholder {
+  color: #9ca3af;
+}
+
+.light-theme .bg-secondary\/50 {
+  background-color: #f3f4f6;
+}
+
+.light-theme .border-border {
+  border-color: #d1d5db;
+}
+
+.light-theme .text-muted-foreground {
+  color: #6b7280;
+}
+
+/* NOVO: Estilos para os botões do TiptapEditor no tema claro */
+.light-theme .tiptap-editor-toolbar {
+  background-color: #f0f0f0; /* Um cinza claro para o fundo da barra de ferramentas */
+  border-color: #d1d5db;
+}
+
+.light-theme .tiptap-editor-toolbar button {
+  color: #374151; /* Cor do ícone/texto do botão para escuro */
+  background-color: transparent;
+  border-color: #d1d5db; /* Borda leve para os botões */
+}
+
+.light-theme .tiptap-editor-toolbar button.is-active,
+.light-theme .tiptap-editor-toolbar button:hover {
+  background-color: #e0e0e0; /* Fundo mais claro ao ativo/hover */
+  color: #1f2937; /* Cor do ícone/texto mais escura */
+}
+
+.light-theme .tiptap-editor-toolbar select {
+  background-color: #ffffff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.light-theme .tiptap-editor-toolbar select option {
+  background-color: #ffffff;
+  color: #374151;
+}
+
+.light-theme .tiptap-editor-content {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #e5e7eb;
+}
