@@ -1,7 +1,7 @@
 // Arquivo: frontend/src/app/management/email-accounts/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import withAuth from "@/components/withAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
@@ -38,7 +38,7 @@ function ManageEmailAccountsPage() {
     name: '', email: '', authType: 'PASSWORD', smtpHost: '', smtpPort: 587, smtpUser: '', smtpPass: '', smtpSecure: true, status: 'ACTIVE'
   });
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/email-accounts');
@@ -48,11 +48,25 @@ function ManageEmailAccountsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAccounts();
   }, []);
+
+  useEffect(() => {
+    const handleAuthSuccess = (event: MessageEvent) => {
+      if (event.data === 'auth-success') {
+        toast.success('Conta conectada com sucesso!');
+        fetchAccounts(); // Atualiza a lista de contas
+        setIsModalOpen(false);
+      }
+    };
+    window.addEventListener('message', handleAuthSuccess);
+    return () => {
+      window.removeEventListener('message', handleAuthSuccess);
+    };
+  }, [fetchAccounts]);
 
   const handleOpenModal = async (account: EmailAccount | null) => {
     if (account) {
@@ -99,12 +113,26 @@ function ManageEmailAccountsPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // --- LÓGICA ALTERADA ---
+    // Se for uma nova conta OAuth2, apenas inicia o fluxo de autorização
+    if (!editingAccountId && formData.authType === 'OAUTH2') {
+      if (!formData.name || !formData.email) {
+        toast.error("Nome e E-mail são obrigatórios.");
+        return;
+      }
+      handleStartOAuthFlow({
+        name: formData.name,
+        email: formData.email,
+        authType: 'OAUTH2'
+      });
+      return;
+    }
+
+    // Lógica antiga para contas de senha e edição
     let dataToSend = { ...formData };
     if (editingAccountId && dataToSend.smtpPass === '') {
       delete dataToSend.smtpPass;
     }
-
-    // Se for OAuth2, não envia dados de SMTP
     if (dataToSend.authType === 'OAUTH2') {
       delete dataToSend.smtpHost;
       delete dataToSend.smtpPort;
@@ -119,12 +147,7 @@ function ManageEmailAccountsPage() {
 
     toast.promise(promise, {
       loading: 'Salvando conta...',
-      success: (res) => {
-        const newAccount = res.data;
-        // Se for OAuth2, inicia o fluxo de autorização
-        if (newAccount.authType === 'OAUTH2' && !editingAccountId) {
-          handleStartOAuthFlow(newAccount.id);
-        }
+      success: () => {
         setIsModalOpen(false);
         fetchAccounts();
         return <b>Conta salva!</b>;
@@ -133,17 +156,17 @@ function ManageEmailAccountsPage() {
     });
   };
 
-  const handleStartOAuthFlow = async (emailAccountId: string) => {
+  const handleStartOAuthFlow = async (accountData: { id?: string, name?: string, email?: string, authType?: string }) => {
     try {
-      const { data } = await api.post('/oauth/start', { emailAccountId });
+      const { data } = await api.post('/oauth/start', { accountData });
       if (data.authUrl) {
-        // Abre a janela de autorização do Google
         window.open(data.authUrl, '_blank', 'width=500,height=600');
       }
     } catch (error) {
       toast.error("Não foi possível iniciar a conexão com o Google.");
     }
   }
+
   const handleTestConnection = async () => {
     // Validação para garantir que os campos necessários estão preenchidos no formulário
     if (!formData.smtpHost || !formData.smtpPort || !formData.smtpUser || !formData.email) {
@@ -162,9 +185,7 @@ function ManageEmailAccountsPage() {
       { success: { duration: 6000 } } // Aumenta a duração do toast de sucesso
     );
   };
-
-  if (loading) return <DashboardLayout><p>Carregando contas de e-mail...</p></DashboardLayout>;
-
+  // O JSX do retorno da função não precisa de mudanças.
   return (
     <DashboardLayout>
       <div className="card">
@@ -280,7 +301,7 @@ function ManageEmailAccountsPage() {
               <button type="button" onClick={handleTestConnection} className="btn-secondary">Testar Conexão</button>
             )}
             {formData.authType === 'OAUTH2' && editingAccountId && (
-              <button type="button" onClick={() => handleStartOAuthFlow(editingAccountId)} className="btn-secondary">
+              <button type="button" onClick={() => handleStartOAuthFlow({ id: editingAccountId })} className="btn-secondary">
                 Reconectar com Google
               </button>
             )}

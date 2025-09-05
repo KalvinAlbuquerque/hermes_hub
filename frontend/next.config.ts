@@ -32,6 +32,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
+        source: '/oauth/callback',
+        destination: 'http://backend:3333/oauth/callback',
+      },
+      {
         source: '/api/:path*',
         destination: 'http://backend:3333/:path*',
       },

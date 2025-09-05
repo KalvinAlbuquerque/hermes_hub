@@ -1,42 +1,65 @@
 // Arquivo: backend/src/controllers/OAuthController.js
-const { generateAuthUrl, getTokens, oauth2Client } = require('../services/OAuthService');
+const jwt = require('jsonwebtoken'); // NOVO
+const { generateAuthUrl, getTokens } = require('../services/OAuthService');
 const { encrypt } = require('../services/SettingsService');
 const prisma = require('../database/prisma');
 
 module.exports = {
-  // Inicia o fluxo, gerando e enviando a URL de autorização
   async startAuth(request, response) {
-    const { emailAccountId } = request.body;
-    if (!emailAccountId) {
-      return response.status(400).json({ message: 'ID da conta de e-mail é obrigatório.' });
+    // ALTERADO: Recebe os dados completos da conta
+    const { accountData } = request.body;
+    if (!accountData || (!accountData.id && !accountData.email)) {
+      return response.status(400).json({ message: 'Dados da conta de e-mail são obrigatórios.' });
     }
-    const authUrl = generateAuthUrl(emailAccountId);
+    const authUrl = generateAuthUrl(accountData);
     return response.json({ authUrl });
   },
 
-  // Rota de callback que o Google irá chamar
   async handleCallback(request, response) {
-    const { code, state: emailAccountId } = request.query;
+    // ALTERADO: O 'state' agora é um token JWT
+    const { code, state: stateToken } = request.query;
 
     try {
+      // 1. Verifica o token JWT do estado
+      const decodedState = jwt.verify(stateToken, process.env.JWT_SECRET);
+      const { id: emailAccountId, name, email, authType } = decodedState;
+
+      // 2. Obtém os tokens do Google
       const tokens = await getTokens(code);
 
-      // Salva os tokens no banco de dados para a conta correta
-      await prisma.emailAccount.update({
-        where: { id: emailAccountId },
-        data: {
-          accessToken: encrypt(tokens.access_token),
-          refreshToken: encrypt(tokens.refresh_token),
-          tokenExpiresAt: new Date(tokens.expiry_date),
-          status: 'ACTIVE' // Ativa a conta
-        },
-      });
+      // 3. Prepara os dados para salvar
+      const accountDbData = {
+        accessToken: encrypt(tokens.access_token),
+        refreshToken: encrypt(tokens.refresh_token),
+        tokenExpiresAt: new Date(tokens.expiry_date),
+        status: 'ACTIVE'
+      };
+      
+      // 4. Se for uma nova conta, adiciona os dados do state. Se for existente, apenas atualiza.
+      if (emailAccountId) {
+        // Atualiza uma conta existente (reconectar)
+        await prisma.emailAccount.update({
+          where: { id: emailAccountId },
+          data: accountDbData,
+        });
+      } else {
+        // Cria uma nova conta
+        await prisma.emailAccount.create({
+          data: {
+            ...accountDbData,
+            name,
+            email,
+            authType: authType || 'OAUTH2',
+          },
+        });
+      }
+      
+      // Retorna uma página simples para fechar a janela pop-up e notificar o pai
+      return response.send("<script>window.opener.postMessage('auth-success', '*'); window.close();</script>");
 
-      // Retorna uma página simples para fechar a janela pop-up
-      return response.send('<script>window.close();</script>');
     } catch (error) {
       console.error('Erro no callback do OAuth2:', error);
-      return response.status(500).send('<h1>Erro de Autenticação</h1><p>Não foi possível obter os tokens de autorização. Por favor, tente novamente.</p>');
+      return response.status(500).send('<h1>Erro de Autenticação</h1><p>Não foi possível obter os tokens. Tente novamente.</p>');
     }
   },
 };
