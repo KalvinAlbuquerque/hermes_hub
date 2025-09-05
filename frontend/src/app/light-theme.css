@@ -31,22 +31,25 @@
   color: #6b7280;
 }
 
-/* NOVO: Estilos para os botões do TiptapEditor no tema claro */
+/* CORREÇÃO: Estilos para os botões do TiptapEditor no tema claro */
 .light-theme .tiptap-editor-toolbar {
-  background-color: #f0f0f0; /* Um cinza claro para o fundo da barra de ferramentas */
+  background-color: #f3f4f6; /* Fundo da barra de ferramentas */
   border-color: #d1d5db;
 }
 
+/* Estilo padrão para os botões, garantindo que sejam sempre visíveis */
 .light-theme .tiptap-editor-toolbar button {
-  color: #374151; /* Cor do ícone/texto do botão para escuro */
-  background-color: transparent;
-  border-color: #d1d5db; /* Borda leve para os botões */
+  color: #374151; /* Cor do ícone/texto escura */
+  background-color: #ffffff; /* Fundo branco para os botões */
+  border: 1px solid #d1d5db; /* Borda sutil para destacá-los */
 }
 
+/* Estilo para quando um botão está ativo ou em hover */
 .light-theme .tiptap-editor-toolbar button.is-active,
 .light-theme .tiptap-editor-toolbar button:hover {
-  background-color: #e0e0e0; /* Fundo mais claro ao ativo/hover */
+  background-color: #e5e7eb; /* Fundo cinza claro ao passar o mouse ou ativo */
   color: #1f2937; /* Cor do ícone/texto mais escura */
+  border-color: #9ca3af;
 }
 
 .light-theme .tiptap-editor-toolbar select {

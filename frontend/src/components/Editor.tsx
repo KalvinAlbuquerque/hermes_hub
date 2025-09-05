@@ -15,29 +15,29 @@ import Highlight from '@tiptap/extension-highlight';
 import { Paintbrush } from 'lucide-react';
 
 const CustomImage = Image.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      'data-cid': {
-        default: null,
-        renderHTML: attributes => {
-          if (!attributes['data-cid']) {
-            return {};
-          }
-          return {
-            'data-cid': attributes['data-cid'],
-          };
-        },
-      },
-    };
-  },
+    addAttributes() {
+        return {
+            ...this.parent?.(),
+            'data-cid': {
+                default: null,
+                renderHTML: attributes => {
+                    if (!attributes['data-cid']) {
+                        return {};
+                    }
+                    return {
+                        'data-cid': attributes['data-cid'],
+                    };
+                },
+            },
+        };
+    },
 });
 
 const MenuBar = ({ editor }: { editor: any }) => {
     if (!editor) {
         return null;
     }
-    
+
     const getActiveHeading = () => {
         if (editor.isActive('heading', { level: 1 })) return '1';
         if (editor.isActive('heading', { level: 2 })) return '2';
@@ -47,13 +47,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
 
     // Paleta de cores rápidas
     const quickColors = ['#E6EDF3', '#DA3633', '#238636', '#2F81F7', '#F1E05A'];
-    
+
     return (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-2 border-b border-border bg-secondary/50">
+        <div className="tiptap-editor-toolbar flex flex-wrap items-center gap-x-4 gap-y-2 p-2 border-b border-border bg-secondary/50">
             <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={`px-3 py-1 rounded font-bold ${editor.isActive('bold') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>B</button>
             <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={`px-3 py-1 rounded italic ${editor.isActive('italic') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>I</button>
             <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} className={`px-3 py-1 rounded line-through ${editor.isActive('strike') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>S</button>
-            
+
             <div className="h-6 border-l border-border mx-1"></div>
 
             <select
@@ -84,31 +84,31 @@ const MenuBar = ({ editor }: { editor: any }) => {
                 <option value="Verdana">Verdana</option>
                 <option value="Times New Roman">Times New Roman</option>
             </select>
-            
+
             <div className="h-6 border-l border-border mx-1"></div>
 
             <button
-              type="button"
-              onClick={() => editor.chain().focus().toggleHighlight().run()}
-              className={`p-2 rounded ${editor.isActive('highlight') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
-              title="Marca-texto"
+                type="button"
+                onClick={() => editor.chain().focus().toggleHighlight().run()}
+                className={`p-2 rounded ${editor.isActive('highlight') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
+                title="Marca-texto"
             >
-              <Paintbrush size={16} />
+                <Paintbrush size={16} />
             </button>
 
             <div className="h-6 border-l border-border mx-1"></div>
 
             <div className="flex items-center gap-2">
                 <input
-                  type="color"
-                  onInput={event => editor.chain().focus().setColor((event.target as HTMLInputElement).value).run()}
-                  value={editor.getAttributes('textStyle').color || '#E6EDF3'}
-                  className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer"
-                  title="Mais cores"
+                    type="color"
+                    onInput={event => editor.chain().focus().setColor((event.target as HTMLInputElement).value).run()}
+                    value={editor.getAttributes('textStyle').color || '#E6EDF3'}
+                    className="w-8 h-8 p-0 border-none bg-transparent cursor-pointer"
+                    title="Mais cores"
                 />
                 {quickColors.map(color => (
-                    <button 
-                        key={color} 
+                    <button
+                        key={color}
                         type="button"
                         onClick={() => editor.chain().focus().setColor(color).run()}
                         className={`w-5 h-5 rounded-full border-2 ${editor.isActive('textStyle', { color }) ? 'border-foreground' : 'border-transparent'}`}
@@ -117,7 +117,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                     />
                 ))}
             </div>
-            
+
             <div className="h-6 border-l border-border mx-1"></div>
 
             <button type="button" onClick={() => editor.chain().focus().setTextAlign('left').run()} className={`px-2 py-1 rounded ${editor.isActive({ textAlign: 'left' }) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}>Esq</button>
@@ -180,7 +180,7 @@ const TiptapEditor = ({ content, onChange }: EditorProps) => {
                                             }).run();
                                         }
                                     });
-                                
+
                                 toast.promise(uploadPromise, {
                                     loading: 'A enviar imagem...',
                                     success: 'Imagem inserida!',
