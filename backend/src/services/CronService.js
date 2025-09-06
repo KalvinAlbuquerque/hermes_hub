@@ -7,9 +7,14 @@ const { sendMail } = require('./EmailService');
 /**
  * Calcula a próxima data e hora para um lembrete com base nas regras da categoria.
  * @param {object} category - O objeto da categoria com as regras de SLA.
- * @returns {Date} A data/hora do próximo lembrete.
+ * @returns {Date|null} A data/hora do próximo lembrete, ou null se não houver lembrete.
  */
 function calculateNextReminder(category) {
+  // Se não houver categoria ou o modo for 'NONE', não agenda lembrete.
+  if (!category || category.reminderMode === 'NONE') {
+    return null;
+  }
+
   const now = new Date();
 
   if (category.reminderMode === 'INTERVAL') {
@@ -30,8 +35,8 @@ function calculateNextReminder(category) {
     return nextReminder;
   }
 
-  // Fallback: Se não houver regra, agenda para 24 horas a partir de agora.
-  return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  // Retorna nulo se nenhum modo válido for encontrado
+  return null;
 }
 
 
@@ -70,11 +75,12 @@ const processScheduledReminders = async () => {
       const category = incident.template?.category;
 
       // Pula se o incidente, por algum motivo, não tiver uma categoria com regras.
+      // E agora, também se a categoria for NONE (calculateNextReminder retornará null)
       if (!category || !category.reminderTemplateBody) {
-        // Para evitar loops infinitos, move o próximo lembrete para daqui a 24h
+        // Para evitar loops infinitos, marca como nulo para não tentar novamente.
         await prisma.notificationLog.update({
           where: { id: incident.id },
-          data: { nextReminderAt: new Date(new Date().getTime() + 24 * 60 * 60 * 1000) },
+          data: { nextReminderAt: null },
         });
         continue;
       }
@@ -83,10 +89,7 @@ const processScheduledReminders = async () => {
 
       // Substitui o placeholder no corpo do e-mail
       const finalHtmlBody = category.reminderTemplateBody.replace(/\[PROTOCOLO\]/g, protocol);
-
-      // --- CORREÇÃO APLICADA AQUI ---
-      // Garanta que seu código realize a substituição em `category.reminderSubject`
-      // e substitua AMBAS as variáveis: [ASSUNTO] e [PROTOCOLO].
+      
       const finalSubject = category.reminderSubject
         .replace(/\[ASSUNTO\]/gi, incident.subject)
         .replace(/\[PROTOCOLO\]/gi, protocol);
@@ -94,7 +97,7 @@ const processScheduledReminders = async () => {
       // Envia o e-mail usando o corpo do template da categoria
       await sendMail({
         to: incident.recipients,
-        subject: finalSubject, // <-- A variável corrigida é usada aqui
+        subject: finalSubject,
         html: finalHtmlBody,
         accountId: incident.emailAccountId,
       });
@@ -102,7 +105,7 @@ const processScheduledReminders = async () => {
       // Calcula a data/hora do PRÓXIMO lembrete
       const nextReminderDate = calculateNextReminder(category);
 
-      // Atualiza o incidente com a nova data do próximo lembrete
+      // Atualiza o incidente com a nova data do próximo lembrete (ou null se for NONE)
       await prisma.notificationLog.update({
         where: { id: incident.id },
         data: { nextReminderAt: nextReminderDate },
@@ -115,11 +118,15 @@ const processScheduledReminders = async () => {
         },
       });
 
-      console.log(`[CRON] Lembrete para o incidente ${incident.id} enviado. Próximo agendado para: ${nextReminderDate.toLocaleString()}`);
+      if(nextReminderDate) {
+        console.log(`[CRON] Lembrete para o incidente ${incident.id} enviado. Próximo agendado para: ${nextReminderDate.toLocaleString()}`);
+      } else {
+        console.log(`[CRON] Lembrete para o incidente ${incident.id} enviado. Nenhum outro lembrete será agendado.`);
+      }
+
 
     } catch (error) {
       console.error(`[CRON] Erro ao processar lembrete para o incidente ${incident.id}:`, error);
-      // Opcional: Adicionar lógica para não tentar reenviar imediatamente em caso de erro.
     }
   }
   console.log('[CRON] Tarefa de lembretes finalizada.');

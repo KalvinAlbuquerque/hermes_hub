@@ -7,16 +7,17 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Modal from '@/components/Modal';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Trash, Clock, Repeat, FileText, Sun } from 'lucide-react';
+import { Trash, Clock, Repeat, FileText, Sun, BellOff } from 'lucide-react'; // Importe o ícone BellOff
 import dynamic from 'next/dynamic';
 
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });
 
+// Atualize as interfaces para incluir 'NONE'
 interface Category {
   id: string;
   name: string;
   reminderSubject: string;
-  reminderMode: 'INTERVAL' | 'SPECIFIC_TIME';
+  reminderMode: 'INTERVAL' | 'SPECIFIC_TIME' | 'NONE';
   reminderIntervalHours?: number;
   reminderSpecificTime?: string;
   reminderTemplateBody: string;
@@ -33,7 +34,7 @@ interface Reference {
 interface CategoryFormData {
   name: string;
   reminderSubject: string;
-  reminderMode: 'INTERVAL' | 'SPECIFIC_TIME';
+  reminderMode: 'INTERVAL' | 'SPECIFIC_TIME' | 'NONE';
   reminderIntervalHours?: number | string;
   reminderSpecificTime?: string;
   reminderTemplateBody: string;
@@ -172,9 +173,12 @@ function ManageCategoriesPage() {
                 <tr key={category.id} className="hover:bg-secondary/30 transition-colors">
                   <td onClick={() => handleOpenModal(category)} className="px-6 py-4 whitespace-nowrap text-sm text-foreground cursor-pointer">{category.name}</td>
                   <td onClick={() => handleOpenModal(category)} className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground cursor-pointer">
+                    {/* Lógica de exibição atualizada */}
                     {category.reminderMode === 'INTERVAL'
                       ? `A cada ${category.reminderIntervalHours} horas`
-                      : `Diariamente às ${category.reminderSpecificTime}`
+                      : category.reminderMode === 'SPECIFIC_TIME'
+                        ? `Diariamente às ${category.reminderSpecificTime}`
+                        : 'Nenhum lembrete configurado'
                     }
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
@@ -205,21 +209,26 @@ function ManageCategoriesPage() {
       </div>
 
       <Modal title={editingCategoryId ? "Editar Categoria" : "Criar Nova Categoria"} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        {/* O formulário de edição/criação permanece o mesmo */}
-        <form onSubmit={handleFormSubmit} className={editorTheme === 'light' ? 'light-theme' : ''}> {/* MODIFICADO */}
+        <form onSubmit={handleFormSubmit} className={editorTheme === 'light' ? 'light-theme' : ''}>
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-muted-foreground">Nome da Categoria</label>
               <input type="text" value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} className="input-style" required />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground">Assunto do Lembrete</label>
-              <p className="text-xs text-muted-foreground mb-2">Use <strong>[ASSUNTO]</strong> e <strong>[PROTOCOLO]</strong> como variáveis.</p>
-              <input type="text" value={formData.reminderSubject} onChange={(e) => setFormData(p => ({ ...p, reminderSubject: e.target.value }))} className="input-style" required />
-            </div>
+            {/* Oculta os campos de assunto e corpo se não houver lembrete */}
+            {formData.reminderMode !== 'NONE' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground">Assunto do Lembrete</label>
+                  <p className="text-xs text-muted-foreground mb-2">Use <strong>[ASSUNTO]</strong> e <strong>[PROTOCOLO]</strong> como variáveis.</p>
+                  <input type="text" value={formData.reminderSubject} onChange={(e) => setFormData(p => ({ ...p, reminderSubject: e.target.value }))} className="input-style" required />
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-sm font-medium text-muted-foreground">Modo de Lembrete</label>
-              <div className="mt-2 flex gap-4">
+              {/* Opções de modo atualizadas */}
+              <div className="mt-2 flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" value="INTERVAL" checked={formData.reminderMode === 'INTERVAL'} onChange={(e) => setFormData(p => ({ ...p, reminderMode: e.target.value as any }))} />
                   <Repeat size={16} className="text-muted-foreground" /> Intervalo de Horas
@@ -227,6 +236,10 @@ function ManageCategoriesPage() {
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" value="SPECIFIC_TIME" checked={formData.reminderMode === 'SPECIFIC_TIME'} onChange={(e) => setFormData(p => ({ ...p, reminderMode: e.target.value as any }))} />
                   <Clock size={16} className="text-muted-foreground" /> Hora Específica
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" value="NONE" checked={formData.reminderMode === 'NONE'} onChange={(e) => setFormData(p => ({ ...p, reminderMode: e.target.value as any }))} />
+                  <BellOff size={16} className="text-muted-foreground" /> Sem Lembrete
                 </label>
               </div>
             </div>
@@ -242,14 +255,17 @@ function ManageCategoriesPage() {
                 <input type="time" value={formData.reminderSpecificTime} onChange={(e) => setFormData(p => ({ ...p, reminderSpecificTime: e.target.value }))} className="input-style" required />
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground">Corpo do E-mail de Lembrete</label>
-              <button type="button" onClick={() => setEditorTheme(editorTheme === 'dark' ? 'light' : 'dark')} className="p-1 rounded-md hover:bg-secondary">
-                <Sun size={16} />
-              </button>
-              <p className="text-xs text-muted-foreground mb-2">Use a variável <strong>[PROTOCOLO]</strong> para inserir o número do incidente no texto.</p>
-              <TiptapEditor content={formData.reminderTemplateBody} onChange={(newContent) => setFormData(p => ({ ...p, reminderTemplateBody: newContent }))} />
-            </div>
+             {/* Oculta o editor de corpo se não houver lembrete */}
+            {formData.reminderMode !== 'NONE' && (
+                <div>
+                    <label className="block text-sm font-medium text-muted-foreground">Corpo do E-mail de Lembrete</label>
+                    <button type="button" onClick={() => setEditorTheme(editorTheme === 'dark' ? 'light' : 'dark')} className="p-1 rounded-md hover:bg-secondary">
+                        <Sun size={16} />
+                    </button>
+                    <p className="text-xs text-muted-foreground mb-2">Use a variável <strong>[PROTOCOLO]</strong> para inserir o número do incidente no texto.</p>
+                    <TiptapEditor content={formData.reminderTemplateBody} onChange={(newContent) => setFormData(p => ({ ...p, reminderTemplateBody: newContent }))} />
+                </div>
+            )}
           </div>
           <div className="flex justify-end gap-4 mt-8">
             <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
