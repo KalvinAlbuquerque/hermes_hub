@@ -16,10 +16,6 @@ else
   npx prisma db push
 fi
 
-# Executa o seed para popular o banco de dados com dados iniciais
-echo "Seeding the database..."
-npm run db:seed
-
 # Inicia o servidor da aplicação
 echo "Starting the application server..."
 exec "$@"
