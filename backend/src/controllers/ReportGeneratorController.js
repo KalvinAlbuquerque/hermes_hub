@@ -9,13 +9,25 @@ async function addHeader(doc) {
     const companyLogoSetting = await prisma.systemSetting.findUnique({ where: { key: 'companyLogo' } });
     let logoPath;
 
-    if (companyLogoSetting && companyLogoSetting.value && fs.existsSync(path.join(__dirname, '..', '..', 'public', companyLogoSetting.value))) {
-        logoPath = path.join(__dirname, '..', '..', 'public', companyLogoSetting.value);
+    // Constrói o caminho para o logo personalizado, se existir
+    const customLogoPath = companyLogoSetting?.value
+        ? path.join(__dirname, '..', '..', 'public', companyLogoSetting.value)
+        : null;
+
+    // --- LÓGICA CORRIGIDA ---
+    if (customLogoPath && fs.existsSync(customLogoPath)) {
+        // Se o logo personalizado foi carregado e o ficheiro existe, usa-o
+        logoPath = customLogoPath;
     } else {
-        logoPath = path.join(__dirname, '..', '..', 'public', 'attachments', '1755458303755-712784618-hermes-logo-glow.png.png');
+        // Caso contrário, usa o logo padrão do Hermes Hub como fallback
+        logoPath = path.join(__dirname, '..', '..', 'public', 'hermes-logo-glow.png');
     }
     
-    doc.image(logoPath, doc.page.margins.left, 25, { height: 40 });
+    // Verifica se o ficheiro do logo (personalizado ou padrão) realmente existe antes de tentar usá-lo
+    if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, doc.page.margins.left, 25, { height: 40 });
+    }
+    
     const generatedAt = `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
     doc.fontSize(8).text(generatedAt, { align: 'right' });
     doc.moveDown(3);
