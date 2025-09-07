@@ -127,8 +127,6 @@ function SendNotificationPage() {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (!selectedTemplate) return;
 
-        const loadingToast = toast.loading('A preparar pré-visualização...');
-
         try {
             // Busca os detalhes da conta de e-mail selecionada para obter a assinatura
             const accountDetailsRes = await api.get(`/email-accounts/${selectedEmailAccountId}`);
