@@ -178,6 +178,7 @@ module.exports = {
         to: notification.submittedByUser.email,
         subject: `Notificação Rejeitada: "${notification.subject}"`,
         html: `<h1>Sua notificação foi rejeitada.</h1><p>A notificação com o assunto "<strong>${notification.subject}</strong>" foi rejeitada pelo aprovador.</p><hr><h3>Justificativa:</h3><p><em>${reason}</em></p><hr><p>Por favor, revise o conteúdo e submeta novamente se necessário.</p>`,
+        accountId: notification.emailAccountId
       });
 
       await logAction({
