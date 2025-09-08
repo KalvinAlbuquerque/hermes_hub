@@ -8,6 +8,12 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Upload } from 'lucide-react';
 
+// Função para validar um endereço de e-mail
+const validateEmail = (email: string) => {
+  const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return re.test(String(email).toLowerCase());
+};
+
 // 1. ATUALIZAR A INTERFACE PARA INCLUIR AS NOVAS PROPRIEDADES
 interface CompanySettings {
   companyCCEmails: string;
@@ -104,12 +110,27 @@ function CompanySettingsPage() {
   };
 
   const handleSaveSettings = async () => {
-    const settingsPromise = api.post('/company/settings', settings);
+    // --- INÍCIO DA VALIDAÇÃO ---
+    const ccEmails = settings.companyCCEmails.split(/[\n,;]+/).map(email => email.trim()).filter(Boolean);
+    for (const email of ccEmails) {
+      if (!validateEmail(email)) {
+        toast.error(`O e-mail em cópia "${email}" é inválido.`);
+        return;
+      }
+    }
+    // --- FIM DA VALIDAÇÃO ---
+
+    const settingsPromise = api.post('/company/settings', {
+      ...settings,
+      companyCCEmails: ccEmails.join(','), // Salva os e-mails limpos e separados por vírgula
+    });
+
     toast.promise(settingsPromise, {
       loading: 'A salvar configurações...',
       success: <b>Configurações salvas!</b>,
       error: <b>Falha ao salvar as configurações.</b>
     });
+
     if (selectedFile) {
       const formData = new FormData();
       formData.append('logo', selectedFile);
@@ -125,6 +146,7 @@ function CompanySettingsPage() {
       );
     }
   };
+
 
   // O return que você pediu, agora sem erros
   return (

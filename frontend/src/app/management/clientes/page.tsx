@@ -16,6 +16,12 @@ interface Cliente {
   status: 'ACTIVE' | 'INACTIVE';
 }
 
+// Função para validar um endereço de e-mail
+const validateEmail = (email: string) => {
+  const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return re.test(String(email).toLowerCase());
+};
+
 function ManageClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +81,16 @@ function ManageClientesPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailsArray = emailsInput.split(/[\n,;]+/).map(email => email.trim()).filter(Boolean);
+    
+    // --- INÍCIO DA VALIDAÇÃO ---
+    for (const email of emailsArray) {
+        if (!validateEmail(email)) {
+            toast.error(`O endereço de e-mail "${email}" é inválido.`);
+            return; // Impede o envio do formulário
+        }
+    }
+    // --- FIM DA VALIDAÇÃO ---
+
     const dataToSend = { ...formData, emails: emailsArray };
 
     const promise = editingClienteId
