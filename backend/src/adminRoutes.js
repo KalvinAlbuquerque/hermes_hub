@@ -11,6 +11,7 @@ const EmailAccountController = require('./controllers/EmailAccountController');
 const CompanyController = require('./controllers/CompanyController');
 const CategoryController = require('./controllers/CategoryController');
 const BackupController = require('./controllers/BackupController');
+// CORREÇÃO AQUI: O caminho correto é './validators/userValidator'
 const { validate, createUserSchema } = require('./validators/userValidator');
 const multer = require('multer');
 
@@ -36,14 +37,14 @@ adminRoutes.post('/users/force-change-password', UserController.forceChangePassw
 
 // Clientes
 adminRoutes.post('/clientes', can('clientes:write'), ClienteController.create);
-adminRoutes.get('/clientes', can('clientes:read'), ClienteController.index);
+adminRoutes.get('/clientes', can('clientes:read', 'notifications:send'), ClienteController.index);
 adminRoutes.put('/clientes/:id', can('clientes:write'), ClienteController.update);
 adminRoutes.delete('/clientes/:id', can('clientes:delete'), ClienteController.destroy);
 
-// Contas de E-mail e Templates (agora parte de 'system:settings' e 'templates:write')
+// Contas de E-mail
 adminRoutes.post('/email-accounts', can('system:settings'), EmailAccountController.create);
-adminRoutes.get('/email-accounts', can('system:settings'), EmailAccountController.index);
-adminRoutes.get('/email-accounts/:id', can('system:settings'), EmailAccountController.show);
+adminRoutes.get('/email-accounts', can('email_accounts:read', 'system:settings', 'notifications:send'), EmailAccountController.index);
+adminRoutes.get('/email-accounts/:id', can('system:settings', 'notifications:send'), EmailAccountController.show);
 adminRoutes.put('/email-accounts/:id', can('system:settings'), EmailAccountController.update);
 adminRoutes.delete('/email-accounts/:id', can('system:settings'), EmailAccountController.destroy);
 adminRoutes.post('/email-accounts/test-connection', can('system:settings'), EmailAccountController.testConnection);
