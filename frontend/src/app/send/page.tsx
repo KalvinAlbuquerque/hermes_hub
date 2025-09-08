@@ -127,8 +127,6 @@ function SendNotificationPage() {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         if (!selectedTemplate) return;
 
-        const loadingToast = toast.loading('A preparar pré-visualização...');
-
         try {
             // Busca os detalhes da conta de e-mail selecionada para obter a assinatura
             const accountDetailsRes = await api.get(`/email-accounts/${selectedEmailAccountId}`);
@@ -152,11 +150,10 @@ function SendNotificationPage() {
 
             setEditableBody(newBody);
             setEditableSubject(newSubject);
-            toast.dismiss(loadingToast);
             setStep(2);
 
         } catch (error) {
-            toast.error('Falha ao buscar assinatura da conta de e-mail.', { id: loadingToast });
+            toast.error('Falha ao buscar assinatura da conta de e-mail.');
         }
     };
 

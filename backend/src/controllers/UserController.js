@@ -3,11 +3,38 @@ const prisma = require('../database/prisma');
 const bcrypt = require('bcryptjs');
 const { logAction } = require('../services/AuditLogService');
 const { validate, createUserSchema } = require('../validators/userValidator');
+
+// Nova função auxiliar para validar a senha
+const validatePassword = (password) => {
+  const errors = [];
+  if (password.length < 8) {
+    errors.push("A senha deve ter no mínimo 8 caracteres.");
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push("Deve conter pelo menos uma letra minúscula.");
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push("Deve conter pelo menos uma letra maiúscula.");
+  }
+  if (!/\d/.test(password)) {
+    errors.push("Deve conter pelo menos um número.");
+  }
+  if (!/[^a-zA-Z0-9]/.test(password)) {
+    errors.push("Deve conter pelo menos um caractere especial (ex: !@#$%).");
+  }
+  return errors;
+};
+
 module.exports = {
 
   async create(request, response) {
     try {
       const { name, email, login, password, profileId } = request.body;
+
+      const passwordErrors = validatePassword(password);
+      if (passwordErrors.length > 0) {
+        return response.status(400).json({ message: "A senha fornecida não cumpre os requisitos.", errors: passwordErrors });
+      }
 
       if (!profileId) {
         return response.status(400).json({ message: 'O perfil é obrigatório.' });
@@ -59,6 +86,40 @@ module.exports = {
       return response.status(500).json({ message: 'Erro interno ao criar usuário.' });
     }
   },
+
+  async forceChangePassword(request, response) {
+    if (request.user.action !== 'change-password') {
+      return response.status(403).json({ message: 'Ação não permitida com este token.' });
+    }
+
+    const userId = request.user.id;
+    const { newPassword } = request.body;
+
+    // --- LÓGICA DE VALIDAÇÃO ADICIONADA ---
+    const passwordErrors = validatePassword(newPassword);
+    if (passwordErrors.length > 0) {
+      return response.status(400).json({ message: "A senha não cumpre os requisitos.", errors: passwordErrors });
+    }
+    // --- FIM DA VALIDAÇÃO ---
+
+    try {
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          password: hashedPassword,
+          mustChangePassword: false, // <-- A flag é desativada aqui
+        },
+      });
+
+      // Após a troca, o utilizador pode fazer o login normalmente
+      return response.status(200).json({ message: 'Senha alterada com sucesso! Por favor, faça o login novamente.' });
+    } catch (error) {
+      console.error("Erro ao forçar a troca de senha:", error);
+      return response.status(500).json({ message: 'Erro interno ao atualizar a senha.' });
+    }
+  },
   // Listar todos os usuários (sem a senha)
   async index(request, response) {
     try {
@@ -94,6 +155,10 @@ module.exports = {
 
       // Apenas atualiza a senha se uma nova for fornecida
       if (password) {
+        const passwordErrors = validatePassword(password);
+        if (passwordErrors.length > 0) {
+          return response.status(400).json({ message: "A nova senha não cumpre os requisitos.", errors: passwordErrors });
+        }
         dataToUpdate.password = await bcrypt.hash(password, 10);
       }
 

@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import Modal from '@/components/Modal';
 import DashboardLayout from "@/components/DashboardLayout";
 import toast from 'react-hot-toast';
-import { Trash, Users } from 'lucide-react'; // Importe o ícone Users
+import { Trash, Users } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -23,78 +23,150 @@ interface Reference {
   name: string;
 }
 
-const availablePermissions = [
-    { id: 'users:read', label: 'Ver Usuários' },
-    { id: 'users:create', label: 'Criar Usuários' },
-    { id: 'users:update', label: 'Editar Usuários' },
-    { id: 'users:delete', label: 'Excluir Usuários' },
-    { id: 'profiles:read', label: 'Ver Perfis' },
-    { id: 'profiles:create', label: 'Criar Perfis' },
-    { id: 'profiles:update', label: 'Editar Perfis' },
-    { id: 'profiles:delete', label: 'Excluir Perfis' },
-    { id: 'templates:read', label: 'Ver Templates' },
-    { id: 'templates:write', label: 'Criar/Editar Templates' },
-    { id: 'templates:delete', label: 'Excluir Templates' },
-    { id: 'notifications:send', label: 'Enviar Notificações' },
-    { id: 'notifications:approve', label: 'Aprovar Notificações' },
-    { id: 'clientes:read', label: 'Ver Clientes' },
-    { id: 'clientes:write', label: 'Criar/Editar Clientes' },
-    { id: 'clientes:delete', label: 'Excluir Clientes' },
-    { id: 'audit:read', label: 'Ver Logs e Relatórios' },
-    { id: 'system:backup', label: 'Gerenciar Backups' },
-    { id: 'system:settings', label: 'Gerenciar Configurações do Sistema' },
+// ESTRUTURA DE PERMISSÕES SIMPLIFICADA
+const permissionGroups = [
+  {
+    title: 'Usuários',
+    permissions: [
+      { id: 'users:read', label: 'Ver' },
+      { id: 'users:create', label: 'Criar' },
+      { id: 'users:update', label: 'Editar' },
+      { id: 'users:delete', label: 'Excluir' },
+    ]
+  },
+  {
+    title: 'Perfis',
+    permissions: [
+        { id: 'profiles:read', label: 'Ver' },
+        { id: 'profiles:create', label: 'Criar' },
+        { id: 'profiles:update', label: 'Editar' },
+        { id: 'profiles:delete', label: 'Excluir' },
+    ]
+  },
+  {
+    title: 'Templates & Categorias',
+    permissions: [
+        // A permissão de 'Ver' foi removida da UI
+        { id: 'templates:write', label: 'Criar/Editar' },
+        { id: 'templates:delete', label: 'Excluir' },
+    ]
+  },
+  {
+    title: 'Clientes',
+    permissions: [
+        // A permissão de 'Ver' foi removida da UI
+        { id: 'clientes:write', label: 'Criar/Editar' },
+        { id: 'clientes:delete', label: 'Excluir' },
+    ]
+  },
+  {
+    title: 'Contas de E-mail',
+    permissions: [
+        // A permissão de 'Ver (para Envio)' foi removida da UI
+        { id: 'system:settings', label: 'Gerenciar Contas' },
+    ]
+  },
+  {
+    title: 'Notificações',
+    permissions: [
+        { id: 'notifications:send', label: 'Enviar Notificação' }, // Label alterado
+        { id: 'notifications:approve', label: 'Aprovar Notificação' }, // Label alterado
+    ]
+  },
+  {
+    title: 'Sistema',
+    permissions: [
+        { id: 'audit:read', label: 'Ver Logs e Relatórios' },
+        { id: 'system:backup', label: 'Gerenciar Backups' },
+    ]
+  }
 ];
 
+// Permissões que são dadas implicitamente
+const implicitPermissions = {
+    'notifications:send': ['templates:read', 'clientes:read', 'email_accounts:read'],
+    'templates:write': ['templates:read'],
+    'templates:delete': ['templates:read'],
+    'clientes:write': ['clientes:read'],
+    'clientes:delete': ['clientes:read'],
+    'system:settings': ['email_accounts:read'],
+};
+
+
 function ManageProfilesPage() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isReferencesModalOpen, setIsReferencesModalOpen] = useState(false);
-  const [references, setReferences] = useState<Reference[]>([]);
-  const [selectedProfileName, setSelectedProfileName] = useState('');
-  const [formData, setFormData] = useState<{ name: string; permissions: Record<string, boolean> }>({ name: '', permissions: {} });
-  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+    const [profiles, setProfiles] = useState<Profile[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isReferencesModalOpen, setIsReferencesModalOpen] = useState(false);
+    const [references, setReferences] = useState<Reference[]>([]);
+    const [selectedProfileName, setSelectedProfileName] = useState('');
+    const [formData, setFormData] = useState<{ name: string; permissions: Record<string, boolean> }>({ name: '', permissions: {} });
+    const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
-  const fetchProfiles = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/profiles');
-      setProfiles(response.data);
-    } catch (err) {
-      toast.error('Falha ao carregar os perfis.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchProfiles = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/profiles');
+            setProfiles(response.data);
+        } catch (err) {
+            toast.error('Falha ao carregar os perfis.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  useEffect(() => {
-    fetchProfiles();
-  }, []);
+    useEffect(() => {
+        fetchProfiles();
+    }, []);
+    
+    const handleOpenModal = (profile: Profile | null) => {
+        if (profile) {
+            setEditingProfileId(profile.id);
+            setFormData({ name: profile.name, permissions: profile.permissions || {} });
+        } else {
+            setEditingProfileId(null);
+            const allPermissionKeys = permissionGroups.flatMap(g => g.permissions.map(p => p.id));
+            const allImplicitKeys = Object.values(implicitPermissions).flat();
+            const allKeys = [...new Set([...allPermissionKeys, ...allImplicitKeys])];
+            const initialPermissions = allKeys.reduce((acc, key) => ({ ...acc, [key]: false }), {});
+            setFormData({ name: '', permissions: initialPermissions });
+        }
+        setIsModalOpen(true);
+    };
 
-  const handleOpenModal = (profile: Profile | null) => {
-    if (profile) {
-      setEditingProfileId(profile.id);
-      setFormData({ name: profile.name, permissions: profile.permissions || {} });
-    } else {
-      setEditingProfileId(null);
-      const initialPermissions = availablePermissions.reduce((acc, p) => ({...acc, [p.id]: false }), {});
-      setFormData({ name: '', permissions: initialPermissions });
-    }
-    setIsModalOpen(true);
-  };
 
-  const handleShowReferences = async (profile: Profile) => {
-    setSelectedProfileName(profile.name);
-    try {
-        const response = await api.get(`/profiles/${profile.id}/references`);
-        setReferences(response.data);
-        setIsReferencesModalOpen(true);
-    } catch (error) {
-        toast.error('Falha ao buscar referências.');
-    }
-  };
+    const handlePermissionChange = (permissionId: string) => {
+        setFormData(prev => {
+            const isChecked = !prev.permissions[permissionId];
+            const newPermissions = { ...prev.permissions, [permissionId]: isChecked };
 
-  const handleDelete = (profileId: string, profileName: string) => {
+            // Se a permissão principal for marcada, marca as implícitas
+            if (isChecked && implicitPermissions[permissionId as keyof typeof implicitPermissions]) {
+                implicitPermissions[permissionId as keyof typeof implicitPermissions].forEach(implicitPerm => {
+                    newPermissions[implicitPerm] = true;
+                });
+            }
+            
+            // Se a permissão principal for desmarcada, desmarca as implícitas
+            // (Com a exceção de que outras permissões podem ainda requerer a permissão de leitura)
+            if (!isChecked && implicitPermissions[permissionId as keyof typeof implicitPermissions]) {
+                implicitPermissions[permissionId as keyof typeof implicitPermissions].forEach(implicitPerm => {
+                    // Verifica se outra permissão ainda precisa desta permissão de leitura
+                    const isStillNeeded = Object.keys(implicitPermissions).some(key => 
+                        newPermissions[key] && (implicitPermissions[key as keyof typeof implicitPermissions] as string[]).includes(implicitPerm)
+                    );
+                    if (!isStillNeeded) {
+                        newPermissions[implicitPerm] = false;
+                    }
+                });
+            }
+
+            return { ...prev, permissions: newPermissions };
+        });
+    };
+
+    // As funções handleDelete, handleShowReferences, e handleFormSubmit permanecem as mesmas...
+    const handleDelete = (profileId: string, profileName: string) => {
     toast((t) => (
       <div>
         <p className="font-semibold">Tem certeza que deseja excluir o perfil "{profileName}"?</p>
@@ -115,18 +187,17 @@ function ManageProfilesPage() {
       </div>
     ));
   };
-
-  const handlePermissionChange = (permissionId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: {
-        ...prev.permissions,
-        [permissionId]: !prev.permissions[permissionId],
-      },
-    }));
+    const handleShowReferences = async (profile: Profile) => {
+    setSelectedProfileName(profile.name);
+    try {
+        const response = await api.get(`/profiles/${profile.id}/references`);
+        setReferences(response.data);
+        setIsReferencesModalOpen(true);
+    } catch (error) {
+        toast.error('Falha ao buscar referências.');
+    }
   };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
+    const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const promise = editingProfileId
       ? api.put(`/profiles/${editingProfileId}`, formData)
@@ -145,12 +216,12 @@ function ManageProfilesPage() {
     );
   };
 
-  if (loading) return <DashboardLayout><p>Carregando perfis...</p></DashboardLayout>;
 
-  return (
-    <DashboardLayout>
-      <div className="card">
-        <div className="flex justify-between items-center mb-4">
+    return (
+        <DashboardLayout>
+            <div className="card">
+            {/* ... Tabela de perfis ... */}
+            <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-foreground">Gerenciar Perfis</h2>
           <button onClick={() => handleOpenModal(null)} className="btn-primary">
             + Novo Perfil
@@ -181,7 +252,7 @@ function ManageProfilesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
-                        onClick={() => handleDelete(profile.id, profile.name)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(profile.id, profile.name); }}
                         className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled={profile._count.users > 0}
                         title={profile._count.users > 0 ? "Não é possível excluir um perfil em uso" : "Excluir perfil"}
@@ -194,56 +265,59 @@ function ManageProfilesPage() {
             </tbody>
           </table>
         </div>
-      </div>
-
-      <Modal title={editingProfileId ? "Editar Perfil" : "Criar Novo Perfil"} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        {/* O conteúdo do formulário de edição/criação permanece o mesmo */}
-        <form onSubmit={handleFormSubmit}>
-            <div className="mb-4">
-                <label htmlFor="name" className="block text-sm font-medium text-muted-foreground">Nome do Perfil</label>
-                <input
-                type="text" name="name" id="name" value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="input-style" required
-                />
             </div>
-            <div className="mb-4">
-                <h3 className="block text-sm font-medium text-muted-foreground">Permissões</h3>
-                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {availablePermissions.map(p => (
-                    <div key={p.id} className="flex items-center">
-                    <input
-                        id={p.id} name={p.id} type="checkbox"
-                        checked={!!formData.permissions[p.id]}
-                        onChange={() => handlePermissionChange(p.id)}
-                        className="h-4 w-4 text-primary bg-input border-border rounded focus:ring-ring"
-                    />
-                    <label htmlFor={p.id} className="ml-2 block text-sm text-foreground">{p.label}</label>
+
+            <Modal title={editingProfileId ? "Editar Perfil" : "Criar Novo Perfil"} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+                <form onSubmit={handleFormSubmit}>
+                    <div className="mb-6">
+                        <label htmlFor="name" className="block text-sm font-medium text-muted-foreground">Nome do Perfil</label>
+                        <input type="text" name="name" id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-style" required />
                     </div>
-                ))}
+                    <div>
+                        <h3 className="block text-sm font-medium text-muted-foreground mb-4">Permissões</h3>
+                        <div className="space-y-6">
+                            {permissionGroups.map(group => (
+                                <div key={group.title}>
+                                    <p className="font-semibold text-foreground mb-3">{group.title}</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+                                        {group.permissions.map(p => (
+                                            <label key={p.id} className="checkbox-container">
+                                                <span className="label-text">{p.label}</span>
+                                                <input
+                                                    id={p.id}
+                                                    type="checkbox"
+                                                    checked={!!formData.permissions[p.id]}
+                                                    onChange={() => handlePermissionChange(p.id)}
+                                                />
+                                                <span className="checkmark"></span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-border">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
+                        <button type="submit" className="btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </Modal>
+            
+            <Modal title={`Usuários no Perfil "${selectedProfileName}"`} isOpen={isReferencesModalOpen} onClose={() => setIsReferencesModalOpen(false)}>
+                <div>
+                    <ul className="space-y-2">
+                        {references.map(ref => (
+                            <li key={ref.id} className="p-2 bg-secondary/50 rounded-md text-sm">{ref.name}</li>
+                        ))}
+                    </ul>
+                    <div className="flex justify-end mt-6">
+                        <button onClick={() => setIsReferencesModalOpen(false)} className="btn-secondary">Fechar</button>
+                    </div>
                 </div>
-            </div>
-            <div className="flex justify-end gap-4 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
-                <button type="submit" className="btn-primary">Salvar</button>
-            </div>
-        </form>
-      </Modal>
-
-      <Modal title={`Usuários no Perfil "${selectedProfileName}"`} isOpen={isReferencesModalOpen} onClose={() => setIsReferencesModalOpen(false)}>
-        <div>
-            <ul className="space-y-2">
-                {references.map(ref => (
-                    <li key={ref.id} className="p-2 bg-secondary/50 rounded-md text-sm">{ref.name}</li>
-                ))}
-            </ul>
-            <div className="flex justify-end mt-6">
-                <button onClick={() => setIsReferencesModalOpen(false)} className="btn-secondary">Fechar</button>
-            </div>
-        </div>
-      </Modal>
-    </DashboardLayout>
-  );
+            </Modal>
+        </DashboardLayout>
+    );
 }
 
 export default withAuth(ManageProfilesPage);

@@ -2,6 +2,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
   html {
     @apply scroll-smooth;
@@ -13,7 +14,11 @@
     --card: #161B22;
     --border: #30363D;
     --primary: #2F81F7;
+    --secondary: #21262D;
+    --input: #0D1117;
     --muted-foreground: #8D96A0;
+    --destructive: #DA3633;
+    --success: #238636;
   }
 
   body {
@@ -24,7 +29,7 @@
 @layer components {
   /* Estilo base para os cards */
   .card {
-    @apply bg-card text-card-foreground p-6 rounded-lg border border-border shadow-md;
+    @apply bg-card text-foreground p-6 rounded-lg border border-border shadow-md;
   }
 
   /* Estilo unificado para os inputs */
@@ -51,11 +56,100 @@
   }
 }
 
-/* --- CORREÇÃO AQUI --- */
-/* A camada de utilidades foi movida para fora da camada de componentes */
 @layer utilities {
   .overflow-x-auto-y-visible {
     overflow-x: auto;
     overflow-y: visible;
   }
+}
+
+/* Estilo para o container do checkbox */
+.checkbox-container {
+  display: flex; /* Alterado para flex para melhor alinhamento */
+  align-items: center; /* Alinha o texto verticalmente */
+  position: relative;
+  padding-left: 28px;
+  cursor: pointer;
+  font-size: 14px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  min-height: 20px; /* Garante altura mínima */
+}
+
+/* Esconder o checkbox padrão do navegador */
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Criar um checkbox customizado */
+.checkmark {
+  position: absolute;
+  top: 50%; /* Alinha o checkmark verticalmente */
+  transform: translateY(-50%);
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Efeito ao passar o rato (hover) */
+.checkbox-container:hover input:not(:disabled) ~ .checkmark {
+  border-color: var(--primary);
+}
+
+/* Quando o checkbox é marcado */
+.checkbox-container input:checked ~ .checkmark {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Criar o indicador (check) quando marcado */
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Mostrar o indicador quando marcado */
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Estilo do indicador (o "V" ou "check") */
+.checkbox-container .checkmark:after {
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+
+/* Estilo para checkbox desabilitado */
+.checkbox-container input:disabled ~ .checkmark {
+  background-color: var(--secondary);
+  border-color: var(--border);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.checkbox-container input:disabled:checked ~ .checkmark:after {
+  border-color: var(--muted-foreground);
+}
+
+/* Cor do texto para label desabilitado */
+.checkbox-container input:disabled + .label-text {
+    color: var(--muted-foreground);
 }

@@ -13,11 +13,10 @@ const routes = Router();
 // Rota do Dashboard
 routes.get('/dashboard/stats', authMiddleware, DashboardController.getStats);
 
-// --- ALTERAÇÃO 2: ADICIONA A ROTA PARA IMAGENS COLADAS <<<< ---
 routes.post('/attachments/paste', authMiddleware, AttachmentController.handlePaste);
 
 // Rotas de Template
-routes.get('/templates', authMiddleware, can('templates:read'), TemplateController.index);
+routes.get('/templates', authMiddleware, can('templates:read', 'notifications:send'), TemplateController.index);
 routes.post('/templates', authMiddleware, can('templates:write'), TemplateController.create);
 routes.put('/templates/:id', authMiddleware, can('templates:write'), TemplateController.update);
 routes.delete('/templates/:id', authMiddleware, can('templates:delete'), TemplateController.destroy);
@@ -27,11 +26,13 @@ routes.post('/notifications/submit', authMiddleware, can('notifications:send'), 
 routes.post('/notifications/:id/approve', authMiddleware, can('notifications:approve'), NotificationController.approve);
 routes.post('/notifications/:id/reject', authMiddleware, can('notifications:approve'), NotificationController.reject);
 // --- ROTAS DE MFA ---
+routes.get('/mfa/status', authMiddleware, MfaController.getStatus); // <-- NOVA ROTA
 routes.post('/mfa/setup', authMiddleware, MfaController.setup);
 routes.post('/mfa/verify', authMiddleware, MfaController.verifyAndEnable);
+routes.post('/mfa/disable', authMiddleware, MfaController.disable); // <-- NOVA ROTA
 
 // --- ROTAS DE OAuth2 ---
 routes.post('/oauth/start', authMiddleware, can('system:settings'), OAuthController.startAuth);
-routes.get('/oauth/callback', OAuthController.handleCallback); // Rota pública para o Google redirecionar
+routes.get('/oauth/callback', OAuthController.handleCallback);
 
 module.exports = routes;

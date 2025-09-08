@@ -72,50 +72,50 @@ module.exports = {
 
   async getRecentRepliesForUser(request, response) {
     try {
-        const userId = request.user.id;
-        const recentReplies = await prisma.notificationLog.findMany({
-            where: {
-                replyStatus: 'REPLIED',
-                submittedByUserId: userId,
-            },
-            orderBy: {
-                repliedAt: 'desc',
-            },
-            take: 15,
-            select: {
-                id: true,
-                protocol: true,
-                subject: true,
-                senderHasReadReply: true,
-            },
-        });
-        return response.json(recentReplies);
+      const userId = request.user.id;
+      const recentReplies = await prisma.notificationLog.findMany({
+        where: {
+          replyStatus: 'REPLIED',
+          submittedByUserId: userId,
+        },
+        orderBy: {
+          repliedAt: 'desc',
+        },
+        take: 15,
+        select: {
+          id: true,
+          protocol: true,
+          subject: true,
+          senderHasReadReply: true,
+        },
+      });
+      return response.json(recentReplies);
     } catch (error) {
-        console.error("Erro ao buscar respostas recentes:", error);
-        return response.status(500).json({ message: 'Erro ao buscar respostas recentes.' });
+      console.error("Erro ao buscar respostas recentes:", error);
+      return response.status(500).json({ message: 'Erro ao buscar respostas recentes.' });
     }
   },
 
   async markRepliesAsRead(request, response) {
     try {
-        const userId = request.user.id;
-        const { notificationIds } = request.body;
-        if (!notificationIds || !Array.isArray(notificationIds)) {
-            return response.status(400).json({ message: 'IDs de notificação inválidos.' });
-        }
-        await prisma.notificationLog.updateMany({
-            where: {
-                id: { in: notificationIds },
-                submittedByUserId: userId,
-            },
-            data: {
-                senderHasReadReply: true,
-            },
-        });
-        return response.status(204).send();
+      const userId = request.user.id;
+      const { notificationIds } = request.body;
+      if (!notificationIds || !Array.isArray(notificationIds)) {
+        return response.status(400).json({ message: 'IDs de notificação inválidos.' });
+      }
+      await prisma.notificationLog.updateMany({
+        where: {
+          id: { in: notificationIds },
+          submittedByUserId: userId,
+        },
+        data: {
+          senderHasReadReply: true,
+        },
+      });
+      return response.status(204).send();
     } catch (error) {
-        console.error("Erro ao marcar respostas como lidas:", error);
-        return response.status(500).json({ message: 'Erro ao marcar respostas como lidas.' });
+      console.error("Erro ao marcar respostas como lidas:", error);
+      return response.status(500).json({ message: 'Erro ao marcar respostas como lidas.' });
     }
   },
 
@@ -125,8 +125,9 @@ module.exports = {
       const userId = request.user.id;
       const incident = await prisma.notificationLog.findUnique({ where: { id }, include: { template: { include: { category: true } } } });
       if (!incident) { return response.status(404).json({ message: 'Incidente não encontrado.' }); }
-      if (!incident.template?.category) { return response.status(400).json({ message: 'Incidente não possui uma categoria de SLA para enviar lembretes.' }); }
-      
+      if (!incident.template?.category || incident.template.category.reminderMode === 'NONE') {
+        return response.status(400).json({ message: 'Incidente pertence a uma categoria que não permite o envio de lembretes.' });
+      }
       const category = incident.template.category;
       const protocol = incident.protocol || `HERMES-${incident.id.substring(0, 8).toUpperCase()}`;
 

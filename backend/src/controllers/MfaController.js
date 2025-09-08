@@ -2,7 +2,8 @@
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const prisma = require('../database/prisma');
-const jwt = require('jsonwebtoken'); // 1. Importar a biblioteca JWT
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs'); // <-- ESTA LINHA FOI ADICIONADA
 
 module.exports = {
   // Gera o segredo e um token de setup temporário
@@ -14,8 +15,6 @@ module.exports = {
       name: `Hermes Hub (${user.email})`,
     });
 
-    // 2. NÃO salvar o segredo no banco de dados ainda.
-    // Em vez disso, criamos um token de configuração com validade de 5 minutos.
     const mfaSetupToken = jwt.sign(
       { userId: user.id, mfaSecret: secret.base32 },
       process.env.JWT_SECRET,
@@ -26,7 +25,6 @@ module.exports = {
       if (err) {
         return response.status(500).json({ message: 'Erro ao gerar QR Code.' });
       }
-      // 3. Enviamos o QR Code e o token de configuração para o frontend
       return response.json({ 
         secret: secret.base32, 
         qrCodeUrl: data_url, 
@@ -37,7 +35,6 @@ module.exports = {
 
   // Verifica o token e, se for válido, ativa o MFA permanentemente
   async verifyAndEnable(request, response) {
-    // 4. Recebemos o token do usuário E o token de configuração
     const { token, mfaSetupToken } = request.body;
     const userId = request.user.id;
 
@@ -46,7 +43,6 @@ module.exports = {
     }
 
     try {
-      // 5. Verificamos se o token de configuração é válido e não expirou
       const decoded = jwt.verify(mfaSetupToken, process.env.JWT_SECRET);
       
       if (decoded.userId !== userId) {
@@ -55,16 +51,14 @@ module.exports = {
       
       const tempSecret = decoded.mfaSecret;
 
-      // 6. Verificamos o código de 6 dígitos do usuário contra o segredo temporário
       const verified = speakeasy.totp.verify({
         secret: tempSecret,
         encoding: 'base32',
         token,
-        window: 1, // Permite uma pequena variação de tempo
+        window: 1,
       });
 
       if (verified) {
-        // 7. SUCESSO! Agora salvamos o segredo permanentemente no banco de dados
         await prisma.user.update({
           where: { id: userId },
           data: { mfaSecret: tempSecret },
@@ -74,8 +68,50 @@ module.exports = {
         return response.status(400).json({ verified: false, message: 'Token inválido.' });
       }
     } catch (err) {
-      // Captura erros de token expirado ou malformado
       return response.status(401).json({ message: 'Sessão de configuração expirou. Por favor, gere um novo código.' });
+    }
+  },
+
+  // Retorna se o MFA está ativo para o usuário logado
+  async getStatus(request, response) {
+    try {
+      const user = await prisma.user.findUnique({ where: { id: request.user.id } });
+      return response.json({ mfaEnabled: !!user.mfaSecret });
+    } catch (error) {
+      return response.status(500).json({ message: 'Erro ao verificar status do MFA.' });
+    }
+  },
+
+  // Desativa o MFA para o usuário logado após verificar a senha
+  async disable(request, response) {
+    try {
+      const { password } = request.body;
+      const userId = request.user.id;
+
+      if (!password) {
+        return response.status(400).json({ message: 'A senha é obrigatória para desativar o MFA.' });
+      }
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return response.status(404).json({ message: 'Usuário não encontrado.' });
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return response.status(401).json({ message: 'Senha inválida.' });
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { mfaSecret: null },
+      });
+
+      return response.json({ message: 'MFA desativado com sucesso!' });
+
+    } catch (error) {
+      console.error("Erro ao desativar MFA:", error);
+      return response.status(500).json({ message: 'Erro interno ao desativar o MFA.' });
     }
   },
 };

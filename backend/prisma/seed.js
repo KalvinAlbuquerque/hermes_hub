@@ -32,6 +32,7 @@ async function main() {
         'audit:read': true,
         'system:backup': true,
         'system:settings': true,
+        'email_accounts:read': true,
       },
     },
     create: {
@@ -57,13 +58,14 @@ async function main() {
         'audit:read': true,
         'system:backup': true,
         'system:settings': true,
+        'email_accounts:read': true,
       },
     },
   });
   console.log(`Perfil "${superAdminProfile.name}" criado/atualizado com todas as permissões.`);
 
   // 2. Criar (ou garantir que existe) o Usuário Super Admin
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'telema123';
   console.log(`Usando a senha encontrada no ambiente para o usuário admin...`);
   
   const hashedPassword = await bcrypt.hash(adminPassword, 10);

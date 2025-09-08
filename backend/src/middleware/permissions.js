@@ -31,14 +31,16 @@ const can = (...requiredPermissions) => {
 
       const userPermissions = user.profile.permissions;
       
-      // Verifica se TODAS as permissões necessárias estão presentes e são 'true'
-      const hasAllPermissions = requiredPermissions.every(
+      // --- CORREÇÃO DA LÓGICA ---
+      // Verifica se o usuário tem PELO MENOS UMA das permissões necessárias (lógica OU)
+      const hasPermission = requiredPermissions.some(
         (permission) => userPermissions[permission] === true
       );
 
-      if (!hasAllPermissions) {
+      if (!hasPermission) {
         return response.status(403).json({ message: 'Você não tem permissão para executar esta ação.' });
       }
+      // --- FIM DA CORREÇÃO ---
 
       return next();
 

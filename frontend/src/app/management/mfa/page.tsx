@@ -1,25 +1,46 @@
 // frontend/src/app/management/mfa/page.tsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import withAuth from "@/components/withAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, ShieldOff } from 'lucide-react';
+import Modal from '@/components/Modal';
 
 function ManageMfaPage() {
-    const [isLoading, setIsLoading] = useState(false);
-    // 1. Atualize a interface do estado para incluir o novo token
+    const [isLoading, setIsLoading] = useState(true);
+    const [mfaEnabled, setMfaEnabled] = useState(false);
     const [setupData, setSetupData] = useState<{ qrCodeUrl: string; secret: string; mfaSetupToken: string } | null>(null);
     const [verificationToken, setVerificationToken] = useState('');
+    
+    // Estado para o modal de desativação
+    const [isDisableModalOpen, setIsDisableModalOpen] = useState(false);
+    const [password, setPassword] = useState('');
+
+
+    const checkMfaStatus = async () => {
+        setIsLoading(true);
+        try {
+            const response = await api.get('/mfa/status');
+            setMfaEnabled(response.data.mfaEnabled);
+        } catch (error) {
+            toast.error("Falha ao verificar o status do MFA.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        checkMfaStatus();
+    }, []);
 
     const handleSetupMfa = async () => {
         setIsLoading(true);
         const toastId = toast.loading('A gerar o seu código de segurança...');
         try {
             const response = await api.post('/mfa/setup');
-            // 2. Salva todos os dados recebidos, incluindo o mfaSetupToken
             setSetupData(response.data);
             toast.success('Código gerado! Siga os próximos passos.', { id: toastId });
         } catch (error) {
@@ -36,7 +57,6 @@ function ManageMfaPage() {
             return;
         }
 
-        // 3. Envie o token do usuário E o mfaSetupToken para verificação
         const promise = api.post('/mfa/verify', {
             token: verificationToken,
             mfaSetupToken: setupData?.mfaSetupToken
@@ -47,37 +67,80 @@ function ManageMfaPage() {
             success: (res) => {
                 setSetupData(null);
                 setVerificationToken('');
-                // Usa a mensagem de sucesso do backend para mais clareza
+                setMfaEnabled(true); // Atualiza o estado para exibir a tela de "ativado"
                 return <b>{res.data.message || 'MFA ativado com sucesso!'}</b>;
             },
             error: (err) => err.response?.data?.message || <b>Token inválido. Tente novamente.</b>,
         });
     };
 
+    const handleDisableMfa = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const promise = api.post('/mfa/disable', { password });
+
+        toast.promise(promise, {
+            loading: 'A desativar o MFA...',
+            success: (res) => {
+                setIsDisableModalOpen(false);
+                setPassword('');
+                setMfaEnabled(false); // Atualiza o estado para exibir a tela de "desativado"
+                return <b>{res.data.message || 'MFA desativado com sucesso!'}</b>;
+            },
+            error: (err) => err.response?.data?.message || <b>Falha ao desativar. Verifique a sua senha.</b>,
+        });
+    };
+    
+    // Renderiza um estado de carregamento enquanto busca o status
+    if (isLoading) {
+        return <DashboardLayout><p>A verificar o estado de segurança...</p></DashboardLayout>
+    }
+
     return (
         <DashboardLayout>
             <div className="card max-w-2xl mx-auto">
                 <h2 className="text-xl font-semibold text-foreground mb-4">Gerir Autenticação de Dois Fatores (MFA)</h2>
 
-                {!setupData ? (
+                {mfaEnabled ? (
+                    // TELA QUANDO O MFA ESTÁ ATIVADO
                     <div>
                         <p className="text-muted-foreground mb-4">
-                            A autenticação de dois fatores adiciona uma camada extra de segurança à sua conta, exigindo um código do seu aplicativo autenticador (como Google Authenticator, Authy, etc.) ao fazer login.
+                            A sua conta está protegida com uma camada extra de segurança.
                         </p>
-                        <div className="flex items-center gap-3 p-4 rounded-md bg-secondary/50 border border-border">
-                            <ShieldCheck className="h-6 w-6 text-primary" />
+                        <div className="flex items-center gap-3 p-4 rounded-md bg-success/10 border border-success/30">
+                            <ShieldCheck className="h-6 w-6 text-success" />
                             <div>
-                                <h3 className="font-semibold text-foreground">Status do MFA</h3>
-                                <p className="text-sm text-muted-foreground">O seu MFA está atualmente desativado.</p>
+                                <h3 className="font-semibold text-foreground">Status do MFA: Ativado</h3>
+                                <p className="text-sm text-muted-foreground">Você está mais seguro!</p>
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end">
-                            <button onClick={handleSetupMfa} className="btn-primary" disabled={isLoading}>
-                                {isLoading ? "Aguarde..." : "Ativar Autenticação de Dois Fatores"}
+                            <button onClick={() => setIsDisableModalOpen(true)} className="btn-destructive">
+                                <ShieldOff className="h-4 w-4 mr-2"/>
+                                Desativar Autenticação de Dois Fatores
+                            </button>
+                        </div>
+                    </div>
+                ) : !setupData ? (
+                    // TELA INICIAL QUANDO O MFA ESTÁ DESATIVADO
+                    <div>
+                        <p className="text-muted-foreground mb-4">
+                            A autenticação de dois fatores adiciona uma camada extra de segurança à sua conta, exigindo um código do seu aplicativo autenticador ao fazer login.
+                        </p>
+                        <div className="flex items-center gap-3 p-4 rounded-md bg-secondary/50 border border-border">
+                            <ShieldOff className="h-6 w-6 text-muted-foreground" />
+                            <div>
+                                <h3 className="font-semibold text-foreground">Status do MFA: Desativado</h3>
+                                <p className="text-sm text-muted-foreground">Considere ativar o MFA para maior segurança.</p>
+                            </div>
+                        </div>
+                        <div className="mt-6 flex justify-end">
+                            <button onClick={handleSetupMfa} className="btn-primary">
+                                Ativar Autenticação de Dois Fatores
                             </button>
                         </div>
                     </div>
                 ) : (
+                    // TELA DE CONFIGURAÇÃO (QR CODE)
                     <div>
                         <h3 className="text-lg font-semibold text-foreground">Passo 1: Escaneie o QR Code</h3>
                         <p className="text-muted-foreground mt-2">
@@ -99,15 +162,10 @@ function ManageMfaPage() {
                             <div className="flex-grow">
                                 <label htmlFor="token" className="block text-sm font-medium text-muted-foreground">Token de Verificação</label>
                                 <input
-                                    id="token"
-                                    type="text"
-                                    value={verificationToken}
+                                    id="token" type="text" value={verificationToken}
                                     onChange={(e) => setVerificationToken(e.target.value)}
                                     className="input-style font-mono text-lg tracking-widest text-center"
-                                    placeholder="123456"
-                                    maxLength={6}
-                                    required
-                                    autoFocus
+                                    placeholder="123456" maxLength={6} required autoFocus
                                 />
                             </div>
                             <button type="submit" className="btn-primary">Verificar e Ativar</button>
@@ -115,6 +173,28 @@ function ManageMfaPage() {
                     </div>
                 )}
             </div>
+
+            <Modal title="Confirmar Desativação do MFA" isOpen={isDisableModalOpen} onClose={() => setIsDisableModalOpen(false)}>
+                <form onSubmit={handleDisableMfa}>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        Por segurança, por favor, insira a sua senha atual para confirmar a desativação da autenticação de dois fatores.
+                    </p>
+                    <div>
+                        <label className="block text-sm font-medium text-muted-foreground" htmlFor="password">
+                            Sua Senha
+                        </label>
+                        <input
+                            id="password" type="password" value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="input-style" required autoFocus
+                        />
+                    </div>
+                    <div className="flex justify-end gap-4 mt-6">
+                        <button type="button" onClick={() => setIsDisableModalOpen(false)} className="btn-secondary">Cancelar</button>
+                        <button type="submit" className="btn-destructive">Confirmar e Desativar</button>
+                    </div>
+                </form>
+            </Modal>
         </DashboardLayout>
     );
 }
