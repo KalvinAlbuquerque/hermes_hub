@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Modal from '@/components/Modal';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Trash, Clock, Repeat, FileText, Sun, BellOff } from 'lucide-react'; // Importe o ícone BellOff
+import { Trash, Clock, Repeat, FileText, Sun, BellOff, X } from 'lucide-react'; // Importe o ícone BellOff
 import dynamic from 'next/dynamic';
 
 const TiptapEditor = dynamic(() => import('@/components/Editor'), { ssr: false });

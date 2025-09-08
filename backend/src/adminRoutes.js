@@ -32,6 +32,7 @@ adminRoutes.get('/users', can('users:read'), UserController.index);
 adminRoutes.post('/users', can('users:create'), validate(createUserSchema), UserController.create);
 adminRoutes.put('/users/:id', can('users:update'), UserController.update);
 adminRoutes.delete('/users/:id', can('users:delete'), UserController.destroy);
+adminRoutes.post('/users/force-change-password', UserController.forceChangePassword);
 
 // Clientes
 adminRoutes.post('/clientes', can('clientes:write'), ClienteController.create);

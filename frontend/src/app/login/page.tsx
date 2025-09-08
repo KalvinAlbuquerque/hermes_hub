@@ -37,8 +37,13 @@ export default function LoginPage() {
         token: mfaToken,
       });
 
-      if (response.data.mfaRequired) {
-        // Senha correta, agora peça o token MFA
+      // --- LÓGICA DE REDIRECIONAMENTO ADICIONADA ---
+      if (response.data.forceChangePassword && response.data.token) {
+        // Guarda o token temporário no sessionStorage
+        sessionStorage.setItem('temp-token', response.data.token);
+        // Redireciona para a página de troca de senha
+        router.push('/force-change-password');
+      } else if (response.data.mfaRequired) {
         setMfaRequired(true);
       } else if (response.data.token) {
         // Login completo e bem-sucedido
@@ -51,14 +56,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
-  if (loading || isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <p>Carregando...</p>
-      </div>
-    );
-  }
 
 
   return (

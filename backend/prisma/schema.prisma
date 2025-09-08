@@ -29,6 +29,7 @@ model User {
   status               String            @default("ENABLED")
   createdAt            DateTime          @default(now())
   profileId            String
+   mustChangePassword   Boolean           @default(true) 
   profile              Profile           @relation(fields: [profileId], references: [id], onDelete: Restrict)
   templates            Template[]
   submittedNotifications NotificationLog[] @relation("SubmittedByUser")

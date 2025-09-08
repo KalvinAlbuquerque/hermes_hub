@@ -57,12 +57,29 @@ router.post('/login', loginLimiter, async (request, response) => {
     }
     // --- FIM DA LÓGICA DO MFA ---
 
+
     await logAction({
       userId: user.id,
       action: 'USER_LOGIN',
       details: { message: `Usuário ${user.name} efetuou login.` }
     });
     // Se passou por tudo, gera o token JWT final
+    if (user.mustChangePassword) {
+      // Geramos um token temporário que só permite a troca de senha.
+      const tempToken = jwt.sign(
+        { id: user.id, action: 'change-password' }, // Payload específico
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' } // Token de curta duração
+      );
+      // Retornamos um status especial para o frontend.
+      return response.json({
+        message: 'Troca de senha necessária.',
+        forceChangePassword: true,
+        token: tempToken
+      });
+    }
+
+    // Se mustChangePassword for false, o fluxo de login continua normalmente.
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,

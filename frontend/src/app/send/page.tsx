@@ -150,11 +150,10 @@ function SendNotificationPage() {
 
             setEditableBody(newBody);
             setEditableSubject(newSubject);
-            toast.dismiss(loadingToast);
             setStep(2);
 
         } catch (error) {
-            toast.error('Falha ao buscar assinatura da conta de e-mail.', { id: loadingToast });
+            toast.error('Falha ao buscar assinatura da conta de e-mail.');
         }
     };
 
