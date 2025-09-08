@@ -26,8 +26,10 @@ routes.post('/notifications/submit', authMiddleware, can('notifications:send'), 
 routes.post('/notifications/:id/approve', authMiddleware, can('notifications:approve'), NotificationController.approve);
 routes.post('/notifications/:id/reject', authMiddleware, can('notifications:approve'), NotificationController.reject);
 // --- ROTAS DE MFA ---
+routes.get('/mfa/status', authMiddleware, MfaController.getStatus); // <-- NOVA ROTA
 routes.post('/mfa/setup', authMiddleware, MfaController.setup);
 routes.post('/mfa/verify', authMiddleware, MfaController.verifyAndEnable);
+routes.post('/mfa/disable', authMiddleware, MfaController.disable); // <-- NOVA ROTA
 
 // --- ROTAS DE OAuth2 ---
 routes.post('/oauth/start', authMiddleware, can('system:settings'), OAuthController.startAuth);
