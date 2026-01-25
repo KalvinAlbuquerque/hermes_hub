@@ -3,7 +3,9 @@ const prisma = require('../database/prisma');
 const { sendMail } = require('../services/EmailService');
 const { logAction } = require('../services/AuditLogService');
 const path = require('path');
+
 const { calculateNextReminder } = require('../services/CronService');
+const GlpiService = require('../services/GlpiService');
 
 const cleanMessageId = (idString) => {
   if (!idString) return null;
@@ -54,11 +56,13 @@ module.exports = {
 
     let finalRecipients = [];
     let clienteConnectData = {};
+    let recipientNamesList = []; // Lista legível de destinatários
 
     if (clienteIds && clienteIds.length > 0) {
       const clientes = await prisma.cliente.findMany({ where: { id: { in: clienteIds } } });
       const emailSet = new Set();
       clientes.forEach(cli => {
+        recipientNamesList.push(cli.name); // Adiciona nome do cliente
         if (Array.isArray(cli.emails)) {
           cli.emails.forEach(email => emailSet.add(email));
         }
@@ -67,6 +71,7 @@ module.exports = {
       clienteConnectData = { clientes: { connect: clienteIds.map(id => ({ id })) } };
     } else if (recipients && recipients.length > 0) {
       finalRecipients = recipients;
+      recipientNamesList = recipients; // Para manuais, usa os próprios emails
     } else {
       return response.status(400).json({ message: 'Nenhum destinatário foi fornecido.' });
     }
@@ -111,6 +116,17 @@ module.exports = {
         // PASSA o objeto ATUALIZADO para a função de envio
         await module.exports.approveAndSend(notificationWithProtocol);
 
+        await module.exports.approveAndSend(notificationWithProtocol);
+
+        // --- Integração GLPI ---
+        // Chama de forma assíncrona (sem await) para não bloquear a resposta
+        // --- Integração GLPI ---
+        const glpiData = {
+          templateName: templateWithCategory.name,
+          recipientList: recipientNamesList
+        };
+        GlpiService.createTicket(notificationWithProtocol, glpiData).catch(err => console.error("Erro background GLPI:", err));
+
         await logAction({ userId: senderId, action: 'NOTIFICATION_AUTO_APPROVED', details: { notificationId: newNotification.id, subject: finalSubject } });
         return response.status(200).json({ message: 'Notificação enviada com sucesso!' });
       } catch (error) {
@@ -128,6 +144,21 @@ module.exports = {
         //data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
         data: { protocol: newNotification.id.substring(0, 8).toUpperCase() }
       });
+
+      await prisma.notificationLog.update({
+        where: { id: newNotification.id },
+        //data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
+        data: { protocol: newNotification.id.substring(0, 8).toUpperCase() }
+      });
+
+      // --- Integração GLPI ---
+      // Também cria chamado para notificações pendentes (conforme "Toda vez que eu criar uma notificação")
+      // --- Integração GLPI ---
+      const glpiData = {
+        templateName: templateWithCategory.name,
+        recipientList: recipientNamesList
+      };
+      GlpiService.createTicket(newNotification, glpiData).catch(err => console.error("Erro background GLPI:", err));
 
       await logAction({ userId: senderId, action: 'NOTIFICATION_SUBMITTED', details: { notificationId: newNotification.id, subject: finalSubject } });
 
