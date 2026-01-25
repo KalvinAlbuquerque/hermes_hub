@@ -67,7 +67,7 @@ async function main() {
   // 2. Criar (ou garantir que existe) o Usuário Super Admin
   const adminPassword = process.env.ADMIN_PASSWORD || 'telema123';
   console.log(`Usando a senha encontrada no ambiente para o usuário admin...`);
-  
+
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
   const superAdminUser = await prisma.user.upsert({

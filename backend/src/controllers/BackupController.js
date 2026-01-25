@@ -10,7 +10,9 @@ const RESTORE_ORDER = [
   'categories',
   'templates',
   'emailAccounts',
-  'systemSettings'
+  'systemSettings',
+  'notificationLogs',
+  'reminderLogs'
 ];
 
 module.exports = {
@@ -30,6 +32,8 @@ module.exports = {
           templates: await prisma.template.findMany(),
           emailAccounts: await prisma.emailAccount.findMany(),
           systemSettings: await prisma.systemSetting.findMany(),
+          notificationLogs: await prisma.notificationLog.findMany({ include: { clientes: { select: { id: true } } } }),
+          reminderLogs: await prisma.reminderLog.findMany(),
         },
       };
 
@@ -73,14 +77,30 @@ module.exports = {
         categories: 'category',
         templates: 'template',
         emailAccounts: 'emailAccount',
-        systemSettings: 'systemSetting'
+        systemSettings: 'systemSetting',
+        notificationLogs: 'notificationLog',
+        reminderLogs: 'reminderLog'
       };
 
       // Executa a restauração dentro de uma transação para garantir a integridade
       await prisma.$transaction(async (tx) => {
+        // 1. Limpeza: Remove dados existentes na ordem inversa de dependência
+        const DELETE_ORDER = [...RESTORE_ORDER].reverse();
+        console.log("Iniciando limpeza da base de dados antes da restauração...");
+
+        for (const dataKey of DELETE_ORDER) {
+          const prismaModelName = modelMap[dataKey];
+          if (prismaModelName && tx[prismaModelName]) {
+            // console.log(`A limpar tabela: ${dataKey}`);
+            await tx[prismaModelName].deleteMany();
+          }
+        }
+        console.log("Limpeza concluída. Iniciando restauração...");
+
+        // 2. Restauração: Insere os dados na ordem correta
         for (const dataKey of RESTORE_ORDER) {
           const records = backupData.data[dataKey];
-          
+
           const prismaModelName = modelMap[dataKey];
           if (!prismaModelName || !tx[prismaModelName]) {
             console.warn(`[Restore] Modelo '${dataKey}' não encontrado no Prisma. A ignorar.`);
@@ -89,9 +109,14 @@ module.exports = {
 
           if (records && records.length > 0) {
             console.log(`Restaurando ${records.length} registos para o modelo: ${dataKey}`);
-            
+
             // O `upsert` é crucial aqui: ele cria se não existir, ou atualiza se já existir.
             for (const record of records) {
+              // Tratamento especial para relações (NotificationLog -> Clientes)
+              if (dataKey === 'notificationLogs' && record.clientes && Array.isArray(record.clientes)) {
+                record.clientes = { connect: record.clientes.map(c => ({ id: c.id })) };
+              }
+
               await tx[prismaModelName].upsert({
                 where: { id: record.id },
                 update: record,

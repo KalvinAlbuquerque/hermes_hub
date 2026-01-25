@@ -13,25 +13,9 @@ import { useEffect } from 'react';
 import { Color } from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import { Paintbrush } from 'lucide-react';
+import ResizableImage from './extensions/ResizableImage';
 
-const CustomImage = Image.extend({
-    addAttributes() {
-        return {
-            ...this.parent?.(),
-            'data-cid': {
-                default: null,
-                renderHTML: attributes => {
-                    if (!attributes['data-cid']) {
-                        return {};
-                    }
-                    return {
-                        'data-cid': attributes['data-cid'],
-                    };
-                },
-            },
-        };
-    },
-});
+
 
 const MenuBar = ({ editor }: { editor: any }) => {
     if (!editor) {
@@ -89,9 +73,15 @@ const MenuBar = ({ editor }: { editor: any }) => {
 
             <button
                 type="button"
-                onClick={() => editor.chain().focus().toggleHighlight().run()}
+                onClick={() => {
+                    if (editor.isActive('highlight')) {
+                        editor.chain().focus().unsetHighlight().run();
+                    } else {
+                        editor.chain().focus().toggleHighlight().run();
+                    }
+                }}
                 className={`p-2 rounded ${editor.isActive('highlight') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}`}
-                title="Marca-texto"
+                title="Marca-texto (Clique novamente para remover)"
             >
                 <Paintbrush size={16} />
             </button>
@@ -140,10 +130,11 @@ const TiptapEditor = ({ content, onChange }: EditorProps) => {
                     levels: [1, 2, 3],
                 },
             }),
-            TextAlign.configure({ types: ['heading', 'paragraph'] }),
+            TextAlign.configure({ types: ['heading', 'paragraph', 'image'] }),
             TextStyle,
             FontFamily,
-            CustomImage,
+            FontFamily,
+            ResizableImage,
             Color,
             Highlight,
         ],
