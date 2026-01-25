@@ -23,11 +23,8 @@ const securityHeaders = [
   }
 ]
 
-const nextConfig: NextConfig = {
-  // Adicione esta seção para desabilitar o ESLint durante o build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+const nextConfig = {
+
   // Adicione a secção de reescrita (rewrites)
   async rewrites() {
     return [

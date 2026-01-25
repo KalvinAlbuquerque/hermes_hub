@@ -29,7 +29,7 @@ function ReportsPage() {
         setEndDate(end.toISOString().split('T')[0]);
     };
 
-    const handleGenerateReport = async (reportType: 'categories-by-client' | 'top-clients') => {
+    const handleGenerateReport = async (reportType: 'categories-by-client' | 'top-clients' | 'general') => {
         if (!startDate || !endDate) {
             toast.error("Por favor, selecione um período de datas.");
             return;
@@ -102,6 +102,18 @@ function ReportsPage() {
                             Gerar PDF
                         </button>
                     </div>
+                </div>
+
+                {/* Card para Relatório Geral */}
+                <div className="card">
+                    <h3 className="text-lg font-semibold text-foreground">Relatório Geral</h3>
+                    <p className="text-sm text-muted-foreground mt-2 mb-4">
+                        Visão completa com total de notificações por cliente e detalhamento por categorias.
+                    </p>
+                    <button onClick={() => handleGenerateReport('general')} className="btn-primary w-full">
+                        <Download className="h-4 w-4 mr-2" />
+                        Gerar PDF
+                    </button>
                 </div>
             </div>
         </DashboardLayout>

@@ -105,24 +105,24 @@ async function addWatermark(doc) {
 // Gerar relatório de logs de auditoria em CSV
 module.exports.generateAuditLogsCSV = async (request, response) => {
     try {
-      const logs = await getFilteredAuditLogs(request.query);
+        const logs = await getFilteredAuditLogs(request.query);
 
-      const formattedLogs = logs.map(log => ({
-        Data: new Date(log.createdAt).toLocaleString('pt-BR'),
-        Usuario: log.user.name,
-        Acao: log.action,
-        Detalhes: JSON.stringify(log.details),
-      }));
+        const formattedLogs = logs.map(log => ({
+            Data: new Date(log.createdAt).toLocaleString('pt-BR'),
+            Usuario: log.user.name,
+            Acao: log.action,
+            Detalhes: JSON.stringify(log.details),
+        }));
 
-      const json2csvParser = new Parser();
-      const csv = json2csvParser.parse(formattedLogs);
+        const json2csvParser = new Parser();
+        const csv = json2csvParser.parse(formattedLogs);
 
-      response.header('Content-Type', 'text/csv');
-      response.attachment('relatorio_auditoria.csv');
-      return response.send(csv);
+        response.header('Content-Type', 'text/csv');
+        response.attachment('relatorio_auditoria.csv');
+        return response.send(csv);
 
     } catch (error) {
-      response.status(500).json({ message: "Erro ao gerar relatório CSV." });
+        response.status(500).json({ message: "Erro ao gerar relatório CSV." });
     }
 };
 
@@ -206,7 +206,7 @@ async function getFilteredNotificationLogs(queryParams) {
     if (templateId) where.templateId = templateId;
     if (submittedByUserId) where.submittedByUserId = submittedByUserId;
     if (clienteId) where.clientes = { some: { id: clienteId } };
-    
+
     if (startDate) where.createdAt = { ...where.createdAt, gte: new Date(startDate) };
     if (endDate) {
         const nextDay = new Date(endDate);
@@ -219,11 +219,11 @@ async function getFilteredNotificationLogs(queryParams) {
         orderBy: { createdAt: 'desc' },
         include: {
             // --- ALTERAÇÃO AQUI: Incluindo a categoria do template ---
-            template: { 
-              select: { 
-                name: true,
-                category: { select: { name: true }}
-              } 
+            template: {
+                select: {
+                    name: true,
+                    category: { select: { name: true } }
+                }
             },
             submittedByUser: { select: { name: true } },
             approvedByUser: { select: { name: true } },
@@ -268,7 +268,7 @@ module.exports.generateNotificationLogsPDF = async (request, response) => {
         doc.pipe(response);
 
         // --- As funções de cabeçalho, rodapé e marca d'água são reutilizadas ---
-        await addHeader(doc); 
+        await addHeader(doc);
 
         doc.fontSize(16).font('Helvetica-Bold').text('Relatório de Notificações', { align: 'center' });
         doc.moveDown(2);
@@ -276,7 +276,7 @@ module.exports.generateNotificationLogsPDF = async (request, response) => {
         // --- LAYOUT DA TABELA COMPLETAMENTE REFEITO ---
         const tableTop = doc.y;
         const columnSpacing = 10;
-        
+
         // Definição das posições e larguras das colunas
         const dateX = doc.page.margins.left;
         const subjectX = dateX + 90;
@@ -344,5 +344,163 @@ module.exports.generateNotificationLogsPDF = async (request, response) => {
     } catch (error) {
         console.error("Erro ao gerar PDF de notificações:", error);
         response.status(500).json({ message: "Erro ao gerar relatório PDF de notificações." });
+    }
+};
+
+// --- LÓGICA PARA RELATÓRIO GERAL DE CLIENTES ---
+
+async function getGeneralReportData(queryParams) {
+    const { startDate, endDate } = queryParams;
+    const where = {};
+
+    if (startDate) where.createdAt = { ...where.createdAt, gte: new Date(startDate) };
+    if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        where.createdAt = { ...where.createdAt, lte: nextDay };
+    }
+
+    // Busca todas as notificações no período com seus clientes e template (para categoria)
+    const logs = await prisma.notificationLog.findMany({
+        where,
+        include: {
+            clientes: { select: { id: true, name: true } },
+            template: {
+                select: {
+                    category: { select: { name: true } }
+                }
+            }
+        }
+    });
+
+    // Agregação dos dados
+    const clientStats = {};
+
+    logs.forEach(log => {
+        const categoryName = log.template?.category?.name || 'Sem Categoria';
+
+        log.clientes.forEach(cliente => {
+            if (!clientStats[cliente.id]) {
+                clientStats[cliente.id] = {
+                    name: cliente.name,
+                    totalIncidents: 0,
+                    categories: {}
+                };
+            }
+
+            // Incrementa total geral do cliente
+            clientStats[cliente.id].totalIncidents++;
+
+            // Incrementa contagem por categoria para este cliente
+            if (!clientStats[cliente.id].categories[categoryName]) {
+                clientStats[cliente.id].categories[categoryName] = 0;
+            }
+            clientStats[cliente.id].categories[categoryName]++;
+        });
+    });
+
+    // Converte objeto para array e ordena por total de incidentes (decrescente)
+    return Object.values(clientStats).sort((a, b) => b.totalIncidents - a.totalIncidents);
+}
+
+module.exports.generateGeneralReportPDF = async (request, response) => {
+    try {
+        const clientsData = await getGeneralReportData(request.query);
+        const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
+
+        response.header('Content-Type', 'application/pdf');
+        doc.pipe(response);
+
+        await addHeader(doc);
+
+        doc.fontSize(16).font('Helvetica-Bold').text('Relatório Geral de Clientes', { align: 'center' });
+        doc.moveDown(1);
+
+        doc.fontSize(10).font('Helvetica').text(
+            `Período: ${request.query.startDate ? new Date(request.query.startDate).toLocaleDateString('pt-BR') : 'Início'} até ${request.query.endDate ? new Date(request.query.endDate).toLocaleDateString('pt-BR') : 'Hoje'}`,
+            { align: 'center' }
+        );
+        doc.moveDown(2);
+
+
+        // --- SEÇÃO 1: RESUMO QUANTITATIVO GERAL ---
+        doc.fontSize(12).font('Helvetica-Bold').text('1. Resumo Quantitativo Geral', { underline: true });
+        doc.moveDown(0.5);
+
+        const summaryTableTop = doc.y;
+        const col1X = doc.page.margins.left;
+        const col2X = col1X + 300;
+
+        // Cabeçalho da Tabela de Resumo
+        doc.fontSize(10).font('Helvetica-Bold');
+        doc.text('Cliente', col1X, doc.y);
+        doc.text('Total de Notificações', col2X, doc.y);
+        doc.moveDown(0.5);
+        doc.strokeColor("#cccccc").lineWidth(1).moveTo(col1X, doc.y).lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke();
+        doc.moveDown(0.5);
+
+        // Corpo da Tabela de Resumo
+        doc.fontSize(10).font('Helvetica');
+        for (const client of clientsData) {
+            if (doc.y > doc.page.height - doc.page.margins.bottom - 20) doc.addPage();
+
+            const y = doc.y;
+            doc.text(client.name, col1X, y);
+            doc.text(client.totalIncidents.toString(), col2X, y);
+            doc.moveDown(0.8);
+        }
+
+        doc.moveDown(2);
+
+
+        // --- SEÇÃO 2: DETALHAMENTO POR CATEGORIA ---
+        // Verifica se cabe na página atual, senão quebra
+        if (doc.y > doc.page.height - 200) doc.addPage();
+
+        doc.fontSize(12).font('Helvetica-Bold').text('2. Detalhamento de Categorias por Cliente', { underline: true });
+        doc.moveDown(1);
+
+        for (const client of clientsData) {
+            // Verifica espaço para o bloco do cliente (Título + algumas linhas)
+            if (doc.y + 100 > doc.page.height - doc.page.margins.bottom) doc.addPage();
+
+            // Nome do Cliente em Destaque
+            doc.fontSize(11).fillColor('#2d3748').font('Helvetica-Bold').text(client.name);
+            doc.moveDown(0.3);
+
+            // Tabela de Categorias para este cliente
+            // Cabeçalho Interno
+            const catX = doc.page.margins.left + 20; // Indentado
+            const countX = catX + 250;
+
+            doc.fontSize(9).fillColor('black').font('Helvetica-Bold');
+            doc.text('Categoria', catX, doc.y);
+            doc.text('Apps/Incidentes', countX, doc.y);
+            doc.moveDown(0.3);
+            doc.strokeColor("#eeeeee").lineWidth(1).moveTo(catX, doc.y).lineTo(countX + 100, doc.y).stroke();
+            doc.moveDown(0.5);
+
+            // Lista de Categorias
+            doc.font('Helvetica');
+            const sortedCategories = Object.entries(client.categories).sort(([, a], [, b]) => b - a);
+
+            for (const [category, count] of sortedCategories) {
+                if (doc.y > doc.page.height - doc.page.margins.bottom) doc.addPage();
+
+                const y = doc.y;
+                doc.text(category, catX, y);
+                doc.text(count.toString(), countX, y);
+                doc.moveDown(0.5);
+            }
+            doc.moveDown(1); // Espaço entre clientes
+        }
+
+        await addWatermark(doc);
+        addFooter(doc);
+        doc.end();
+
+    } catch (error) {
+        console.error("Erro ao gerar Relatório Geral:", error);
+        response.status(500).json({ message: "Erro ao gerar Relatório Geral." });
     }
 };

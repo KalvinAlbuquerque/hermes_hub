@@ -1,7 +1,7 @@
 # Arquivo: frontend/Dockerfile (Versão Corrigida para NPM)
 
 # --- Estágio 1: Build ---
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /usr/app
 
@@ -24,7 +24,7 @@ COPY . .
 RUN npm run build
 
 # --- Estágio 2: Produção ---
-FROM node:18-alpine
+FROM node:22-alpine
 
 WORKDIR /usr/app
 

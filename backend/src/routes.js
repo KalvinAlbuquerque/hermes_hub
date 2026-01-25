@@ -1,5 +1,6 @@
 // Arquivo: backend/src/routes.js
 const { Router } = require('express');
+const ReportController = require('./controllers/ReportController');
 const TemplateController = require('./controllers/TemplateController');
 const NotificationController = require('./controllers/NotificationController');
 const DashboardController = require('./controllers/DashboardController');
@@ -12,6 +13,9 @@ const routes = Router();
 
 // Rota do Dashboard
 routes.get('/dashboard/stats', authMiddleware, DashboardController.getStats);
+
+// Rotas de Relatórios
+routes.post('/reports/general', authMiddleware, ReportController.generateGeneralReportPDF);
 
 routes.post('/attachments/paste', authMiddleware, AttachmentController.handlePaste);
 
