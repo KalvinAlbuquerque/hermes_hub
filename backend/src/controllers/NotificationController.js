@@ -116,8 +116,6 @@ module.exports = {
         // PASSA o objeto ATUALIZADO para a função de envio
         await module.exports.approveAndSend(notificationWithProtocol);
 
-        await module.exports.approveAndSend(notificationWithProtocol);
-
         // --- Integração GLPI ---
         // Chama de forma assíncrona (sem await) para não bloquear a resposta
         // --- Integração GLPI ---
@@ -139,12 +137,6 @@ module.exports = {
       });
 
       // Gera e salva o protocolo
-      await prisma.notificationLog.update({
-        where: { id: newNotification.id },
-        //data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
-        data: { protocol: newNotification.id.substring(0, 8).toUpperCase() }
-      });
-
       await prisma.notificationLog.update({
         where: { id: newNotification.id },
         //data: { protocol: `HERMES-${newNotification.id.substring(0, 8).toUpperCase()}` }
